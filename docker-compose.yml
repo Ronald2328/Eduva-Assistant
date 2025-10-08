@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  evolution-api:
+    image: atendai/evolution-api:latest
+    container_name: evolution-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_TYPE=http
+      - SERVER_PORT=8080
+      - CORS_ORIGIN=*
+      - CORS_METHODS=POST,GET,PUT,DELETE
+      - CORS_CREDENTIALS=true
+      - LOG_LEVEL=ERROR,WARN,DEBUG,INFO,LOG,VERBOSE,DARK,WEBHOOKS
+      - LOG_COLOR=true
+      - LOG_BAILEYS=false
+      - DEL_INSTANCE=false
+      - PROVIDER_ENABLED=false
+      - PROVIDER_HOST=127.0.0.1
+      - PROVIDER_PORT=5656
+      - PROVIDER_PREFIX=evolution
+      - DATABASE_ENABLED=false
+      - DATABASE_CONNECTION_URI=mongodb://root:root@mongodb:27017/?authSource=admin&readPreference=primary&ssl=false&directConnection=true
+      - DATABASE_CONNECTION_DB_PREFIX_NAME=evol
+      - REDIS_ENABLED=false
+      - REDIS_URI=redis://redis:6379
+      - REDIS_PREFIX_KEY=evolution_v2
+      - RABBITMQ_ENABLED=false
+      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672
+      - SQS_ENABLED=false
+      - WEBSOCKET_ENABLED=false
+      - WEBSOCKET_GLOBAL_EVENTS=false
+      - WA_BUSINESS_TOKEN_WEBHOOK=evolution
+      - WA_BUSINESS_URL=https://graph.facebook.com
+      - WA_BUSINESS_VERSION=v20.0
+      - WA_BUSINESS_LANGUAGE=pt_BR
+      - WEBHOOK_GLOBAL_URL=''
+      - WEBHOOK_GLOBAL_ENABLED=false
+      - WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS=false
+      - CONFIG_SESSION_PHONE_CLIENT=Evolution API
+      - CONFIG_SESSION_PHONE_NAME=Chrome
+      - QRCODE_LIMIT=30
+      - AUTHENTICATION_TYPE=apikey
+      - AUTHENTICATION_API_KEY=mi_api_key_evolution
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+      - AUTHENTICATION_JWT_EXPIRIN_IN=0
+      - AUTHENTICATION_JWT_SECRET=L=0ZWfAERVcfeMOt=XqOuvLL1Ws=tXgixJJqJKSR32TE9VLMu5TRF=gJhj3DlX=d6L1WjE1=1F9eLa9TWcuAKc
+      - LANGUAGE=en
+    volumes:
+      - evolution_instances:/evolution/instances
+      - evolution_store:/evolution/store
+    networks:
+      - evolution-network
+
+  whatsapp-bot:
+    build: .
+    container_name: whatsapp-bot
+    ports:
+      - "8000:8000"
+    environment:
+      - EVOLUTION_API_URL=http://evolution-api:8080
+      - EVOLUTION_API_KEY=mi_api_key_evolution
+      - EVOLUTION_INSTANCE_NAME=bot_instance
+      - BOT_NAME=ScienceBot
+      - BOT_RESPONSE_MESSAGE=Hola, soy sciencebot
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - SECRET_KEY=pato
+    depends_on:
+      - evolution-api
+    networks:
+      - evolution-network
+
+volumes:
+  evolution_instances:
+  evolution_store:
+
+networks:
+  evolution-network:
+    driver: bridge

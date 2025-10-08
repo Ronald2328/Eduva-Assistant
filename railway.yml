@@ -1,0 +1,19 @@
+build:
+  builder: dockerfile
+
+deploy:
+  healthcheckPath: /health
+  healthcheckTimeout: 300
+  restartPolicyType: never
+
+environments:
+  production:
+    variables:
+      EVOLUTION_API_URL: http://localhost:8080
+      EVOLUTION_API_KEY: mi_api_key_evolution
+      EVOLUTION_INSTANCE_NAME: bot_instance
+      BOT_NAME: ScienceBot
+      BOT_RESPONSE_MESSAGE: Hola, soy sciencebot
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      SECRET_KEY: pato_super_secret_key

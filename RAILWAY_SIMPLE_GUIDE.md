@@ -6,7 +6,7 @@
 
 1. **New Project** → **Empty Service**
 2. **Settings** → **Source** → **Docker Image**
-3. **Image:** `atendai/evolution-api:latest`
+3. **Image:** `atendai/evolution-api:v1.8.7`
 4. **Environment Variables:**
    ```
    AUTHENTICATION_API_KEY=Ev0l_API_K3y_9x7m2p8w4q5t1n6z3v8b2r7
@@ -46,7 +46,7 @@
 **Alternativa - Render.com:**
 1. Crear cuenta en Render.com
 2. **New** → **Web Service**
-3. **Docker Image:** `atendai/evolution-api:latest`
+3. **Docker Image:** `atendai/evolution-api:v1.8.7`
 4. **Environment Variables:** (mismas que arriba)
 5. Usar URL de Render en `EVOLUTION_API_URL`
 

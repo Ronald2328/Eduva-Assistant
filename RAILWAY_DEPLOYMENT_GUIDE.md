@@ -20,7 +20,7 @@ Este proyecto requiere **2 servicios separados** en Railway para funcionar corre
 1. En Railway, click **"New Project"**
 2. Seleccionar **"Empty Service"**
 3. En **Settings** → **Source**, seleccionar **"Docker Image"**
-4. Usar imagen: `atendai/evolution-api:latest`
+4. Usar imagen: `atendai/evolution-api:v1.8.7`
 5. Click **"Deploy"**
 
 ### Paso 2: Configurar variables de entorno

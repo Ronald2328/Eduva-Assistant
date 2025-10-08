@@ -27,7 +27,7 @@ async def configure_webhook_railway() -> None:
     status = await evolution_service.get_instance_status()
 
     if "error" in status:
-        logger.error(f"\n❌ Error al conectar con Evolution API:")
+        logger.error("\n❌ Error al conectar con Evolution API:")
         logger.error(f"   {status['error']}")
         logger.error("\n💡 Verifica que:")
         logger.error("   1. Evolution API esté corriendo en Railway")
@@ -36,7 +36,7 @@ async def configure_webhook_railway() -> None:
         logger.error(f"   4. La instancia '{settings.EVOLUTION_INSTANCE_NAME}' exista")
         return
 
-    logger.info(f"✅ Conexión exitosa!")
+    logger.info("✅ Conexión exitosa!")
     logger.info(f"   Estado: {status.get('state', 'unknown')}")
 
     # Configurar webhook
@@ -49,12 +49,16 @@ async def configure_webhook_railway() -> None:
     # Importante: Verificar que la URL del webhook sea accesible desde Railway
     if settings.WEBHOOK_URL.startswith("http://localhost"):
         logger.warning("\n⚠️  ADVERTENCIA IMPORTANTE:")
-        logger.warning("   Tu WEBHOOK_URL es 'localhost', Evolution API en Railway NO podrá acceder.")
+        logger.warning(
+            "   Tu WEBHOOK_URL es 'localhost', Evolution API en Railway NO podrá acceder."
+        )
         logger.warning("\n   Para que funcione, necesitas:")
         logger.warning("   1. Desplegar este servicio en Railway, Render, o similar")
         logger.warning("   2. O usar ngrok/cloudflare tunnel para exponer localhost")
         logger.warning("\n   Ejemplo con ngrok:")
-        logger.warning("   - Instalar: brew install ngrok (Mac) o descargar de ngrok.com")
+        logger.warning(
+            "   - Instalar: brew install ngrok (Mac) o descargar de ngrok.com"
+        )
         logger.warning("   - Ejecutar: ngrok http 8000")
         logger.warning("   - Copiar la URL https:// que te da ngrok")
         logger.warning("   - Actualizar WEBHOOK_URL en .env con esa URL + /webhook")
@@ -63,7 +67,7 @@ async def configure_webhook_railway() -> None:
     webhook_result = await evolution_service.set_webhook()
 
     if "error" in webhook_result:
-        logger.error(f"\n❌ Error al configurar webhook:")
+        logger.error("\n❌ Error al configurar webhook:")
         logger.error(f"   {webhook_result['error']}")
         return
 
@@ -77,7 +81,9 @@ async def configure_webhook_railway() -> None:
         logger.info("✅ Configuración del webhook:")
         logger.info(f"   URL: {webhook_config.get('url', 'N/A')}")
         logger.info(f"   Eventos: {len(webhook_config.get('events', []))} configurados")
-        logger.info(f"   Webhook by Events: {webhook_config.get('webhook_by_events', False)}")
+        logger.info(
+            f"   Webhook by Events: {webhook_config.get('webhook_by_events', False)}"
+        )
         logger.info(f"   Webhook Base64: {webhook_config.get('webhook_base64', False)}")
 
     logger.info("\n" + "=" * 60)
@@ -96,12 +102,16 @@ async def configure_webhook_railway() -> None:
         logger.info("   3. Verifica los logs para ver la respuesta automática")
 
     logger.info("\n💡 Comandos útiles:")
-    logger.info("   • Ver webhook actual: curl {}/webhook/get".format(
-        f"http://localhost:{settings.API_PORT}"
-    ))
-    logger.info("   • Estado instancia: curl {}/instance/status".format(
-        f"http://localhost:{settings.API_PORT}"
-    ))
+    logger.info(
+        "   • Ver webhook actual: curl {}/webhook/get".format(
+            f"http://localhost:{settings.API_PORT}"
+        )
+    )
+    logger.info(
+        "   • Estado instancia: curl {}/instance/status".format(
+            f"http://localhost:{settings.API_PORT}"
+        )
+    )
 
 
 if __name__ == "__main__":

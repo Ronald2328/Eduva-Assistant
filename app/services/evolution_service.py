@@ -5,11 +5,8 @@ import httpx
 
 from app.core.config import settings
 from app.models.webhook import (
-    ConnectionState,
-    InstanceResponse,
     ParsedMessage,
     SendMessageRequest,
-    SendMessageResponse,
     WebhookConfig,
     WebhookPayload,
 )
@@ -116,7 +113,9 @@ class EvolutionAPIService:
         url = f"{self.base_url}/message/sendText/{self.instance_name}"
 
         # Format phone number (remove + and ensure it has country code)
-        formatted_number = phone_number.replace("+", "").replace(" ", "").replace("-", "")
+        formatted_number = (
+            phone_number.replace("+", "").replace(" ", "").replace("-", "")
+        )
         if not formatted_number.startswith("51"):  # Peru country code
             formatted_number = f"51{formatted_number}"
 
@@ -152,7 +151,9 @@ class EvolutionAPIService:
                 logger.error(f"Error getting instance status: {e}")
                 return {"error": str(e)}
 
-    def parse_webhook_message(self, webhook_data: dict[str, Any]) -> ParsedMessage | None:
+    def parse_webhook_message(
+        self, webhook_data: dict[str, Any]
+    ) -> ParsedMessage | None:
         """Parse incoming webhook message from Evolution API."""
         try:
             # Validate and parse webhook payload
@@ -168,7 +169,11 @@ class EvolutionAPIService:
                 logger.warning("No message data in webhook")
                 return None
 
-            message_data = webhook.data[0]
+            # Handle both single object and list formats
+            if isinstance(webhook.data, list):
+                message_data = webhook.data[0]
+            else:
+                message_data = webhook.data
 
             # Don't respond to our own messages
             if message_data.key.fromMe:

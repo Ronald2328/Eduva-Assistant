@@ -30,7 +30,9 @@ class Settings(BaseSettings):
         default="http://localhost:8000/webhook",
         description="URL where Evolution API will send webhooks",
     )
-    WEBHOOK_ENABLED: bool = Field(default=True, description="Enable webhook configuration")
+    WEBHOOK_ENABLED: bool = Field(
+        default=True, description="Enable webhook configuration"
+    )
     WEBHOOK_EVENTS: list[str] = Field(
         default_factory=lambda: [
             "MESSAGES_UPSERT",

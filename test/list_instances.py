@@ -37,7 +37,9 @@ async def list_instances() -> None:
                 logger.warning("\n⚠️  No se encontraron instancias")
                 logger.info("\n💡 Para crear una nueva instancia:")
                 logger.info("   Accede a: GET /instance/create")
-                logger.info(f"   curl -X POST {settings.EVOLUTION_API_URL}/instance/create \\")
+                logger.info(
+                    f"   curl -X POST {settings.EVOLUTION_API_URL}/instance/create \\"
+                )
                 logger.info(f"        -H 'apikey: {settings.EVOLUTION_API_KEY}' \\")
                 logger.info("        -H 'Content-Type: application/json' \\")
                 logger.info("        -d '{")
@@ -86,12 +88,20 @@ async def list_instances() -> None:
                         instance_names.append(name)
 
             if settings.EVOLUTION_INSTANCE_NAME in instance_names:
-                logger.info(f"✅ La instancia configurada '{settings.EVOLUTION_INSTANCE_NAME}' existe!")
+                logger.info(
+                    f"✅ La instancia configurada '{settings.EVOLUTION_INSTANCE_NAME}' existe!"
+                )
             else:
-                logger.warning(f"⚠️  La instancia '{settings.EVOLUTION_INSTANCE_NAME}' NO existe")
+                logger.warning(
+                    f"⚠️  La instancia '{settings.EVOLUTION_INSTANCE_NAME}' NO existe"
+                )
                 logger.info("\n💡 Opciones:")
-                logger.info(f"   1. Crear la instancia '{settings.EVOLUTION_INSTANCE_NAME}'")
-                logger.info(f"   2. O actualizar .env con uno de estos nombres: {instance_names}")
+                logger.info(
+                    f"   1. Crear la instancia '{settings.EVOLUTION_INSTANCE_NAME}'"
+                )
+                logger.info(
+                    f"   2. O actualizar .env con uno de estos nombres: {instance_names}"
+                )
 
         except httpx.HTTPStatusError as e:
             logger.error(f"\n❌ Error HTTP {e.response.status_code}:")
@@ -100,7 +110,7 @@ async def list_instances() -> None:
             logger.error("   1. Que la URL sea correcta")
             logger.error("   2. Que el API Key sea válido")
         except httpx.RequestError as e:
-            logger.error(f"\n❌ Error de conexión:")
+            logger.error("\n❌ Error de conexión:")
             logger.error(f"   {e}")
             logger.error("\n💡 Verifica:")
             logger.error("   1. Que Evolution API esté corriendo")

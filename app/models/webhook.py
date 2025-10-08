@@ -22,7 +22,9 @@ class ExtendedTextMessage(BaseModel):
 class MessageContent(BaseModel):
     """Message content."""
 
-    conversation: str | None = Field(default=None, description="Simple conversation text")
+    conversation: str | None = Field(
+        default=None, description="Simple conversation text"
+    )
     extendedTextMessage: ExtendedTextMessage | None = Field(
         default=None, description="Extended text message"
     )
@@ -42,7 +44,7 @@ class WebhookPayload(BaseModel):
 
     event: str = Field(..., description="Event type")
     instance: str = Field(..., description="Instance name")
-    data: list[MessageData] = Field(default_factory=list, description="Message data")
+    data: MessageData | list[MessageData] = Field(..., description="Message data")
 
 
 class ParsedMessage(BaseModel):
@@ -74,7 +76,9 @@ class SendMessageResponse(BaseModel):
 class InstanceResponse(BaseModel):
     """Response from instance operations."""
 
-    instance: dict[str, Any] | None = Field(default=None, description="Instance details")
+    instance: dict[str, Any] | None = Field(
+        default=None, description="Instance details"
+    )
     hash: dict[str, Any] | None = Field(default=None, description="Instance hash")
     qrcode: dict[str, Any] | None = Field(default=None, description="QR code data")
 
@@ -93,7 +97,9 @@ class WebhookConfig(BaseModel):
     webhook_by_events: bool = Field(
         default=False, description="Whether to send webhooks by event type"
     )
-    webhook_base64: bool = Field(default=False, description="Whether to send media as base64")
+    webhook_base64: bool = Field(
+        default=False, description="Whether to send media as base64"
+    )
     events: list[str] = Field(
         default_factory=lambda: [
             "MESSAGES_UPSERT",

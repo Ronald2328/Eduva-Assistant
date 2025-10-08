@@ -18,9 +18,10 @@ Este proyecto requiere **2 servicios separados** en Railway para funcionar corre
 
 ### Paso 1: Crear el servicio
 1. En Railway, click **"New Project"**
-2. Seleccionar **"Deploy from template"**
-3. Buscar **"Evolution API"** o usar: `atendai/evolution-api`
-4. Click **"Deploy Now"**
+2. Seleccionar **"Empty Service"**
+3. En **Settings** → **Source**, seleccionar **"Docker Image"**
+4. Usar imagen: `atendai/evolution-api:latest`
+5. Click **"Deploy"**
 
 ### Paso 2: Configurar variables de entorno
 

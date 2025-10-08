@@ -10,10 +10,10 @@ environments:
   production:
     variables:
       EVOLUTION_API_URL: http://localhost:8080
-      EVOLUTION_API_KEY: mi_api_key_evolution
-      EVOLUTION_INSTANCE_NAME: bot_instance
+      EVOLUTION_API_KEY: Ev0l_API_K3y_9x7m2p8w4q5t1n6z3v8b2r7
+      EVOLUTION_INSTANCE_NAME: sciencebot_instance
       BOT_NAME: ScienceBot
-      BOT_RESPONSE_MESSAGE: Hola, soy sciencebot
+      BOT_RESPONSE_MESSAGE: ¡Hola! Soy ScienceBot 🔬. ¿En qué puedo ayudarte hoy?
       API_HOST: 0.0.0.0
       API_PORT: 8000
-      SECRET_KEY: pato_super_secret_key
+      SECRET_KEY: Sc13nc3B0t_2024_R4ilw4y_S3cr3t_K3y_9m8x7n2p5q1w4e6r

@@ -24,7 +24,7 @@ async def root() -> dict[str, str]:
 
 @app.post("/webhook")
 async def receive_message(request: Request) -> dict[str, str]:
-    """Recibir mensajes de Evolution API"""
+    """Recibir mensajes de Evolution API."""
     try:
         body = await request.json()
         logger.info(f"Received webhook: {body}")
@@ -33,16 +33,20 @@ async def receive_message(request: Request) -> dict[str, str]:
         parsed_message = evolution_service.parse_webhook_message(body)
 
         if parsed_message:
-            phone_number, text = parsed_message
-            logger.info(f"Message from {phone_number}: {text}")
+            logger.info(
+                f"Message from {parsed_message.phone_number} "
+                f"({parsed_message.push_name}): {parsed_message.text}"
+            )
 
             # Responder automáticamente con el mensaje configurado
-            await evolution_service.send_message(phone_number, settings.BOT_RESPONSE_MESSAGE)
+            await evolution_service.send_message(
+                parsed_message.phone_number, settings.BOT_RESPONSE_MESSAGE
+            )
 
         return {"status": "success"}
 
     except Exception as e:
-        logger.error(f"Error processing webhook: {e}")
+        logger.error(f"Error processing webhook: {e}", exc_info=True)
         return {"status": "error", "message": str(e)}
 
 
@@ -64,6 +68,20 @@ async def get_qr_code() -> dict[str, Any]:
 async def get_instance_status() -> dict[str, Any]:
     """Obtener estado de la instancia"""
     result = await evolution_service.get_instance_status()
+    return result
+
+
+@app.post("/webhook/set")
+async def set_webhook() -> dict[str, Any]:
+    """Configurar webhook para la instancia."""
+    result = await evolution_service.set_webhook()
+    return result
+
+
+@app.get("/webhook/get")
+async def get_webhook() -> dict[str, Any]:
+    """Obtener configuración actual del webhook."""
+    result = await evolution_service.get_webhook()
     return result
 
 

@@ -25,6 +25,21 @@ class Settings(BaseSettings):
     API_PORT: int = Field(default=8000)
     API_DEBUG: bool = Field(default=True)
 
+    # Webhook Configuration
+    WEBHOOK_URL: str = Field(
+        default="http://localhost:8000/webhook",
+        description="URL where Evolution API will send webhooks",
+    )
+    WEBHOOK_ENABLED: bool = Field(default=True, description="Enable webhook configuration")
+    WEBHOOK_EVENTS: list[str] = Field(
+        default_factory=lambda: [
+            "MESSAGES_UPSERT",
+            "MESSAGES_UPDATE",
+            "SEND_MESSAGE",
+        ],
+        description="Events to listen to",
+    )
+
     # Bot Configuration
     BOT_NAME: str = Field(default="ScienceBot")
     BOT_RESPONSE_MESSAGE: str = Field(default="Hola, soy sciencebot")

@@ -156,7 +156,9 @@ Responde de forma clara, concisa y útil."""
                 assistant_message = response.choices[0].message
 
             # Get the final response
-            response_text = assistant_message.content or "Lo siento, no pude generar una respuesta."
+            response_text = (
+                assistant_message.content or "Lo siento, no pude generar una respuesta."
+            )
 
             # Add assistant response to history
             self._add_to_history(user_id, "assistant", response_text)

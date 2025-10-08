@@ -5,6 +5,8 @@ import httpx
 
 from app.core.config import settings
 from app.models.webhook import (
+    MessageData,  # Used for type narrowing in isinstance checks
+    MessageUpdateData,
     ParsedMessage,
     SendMessageRequest,
     WebhookConfig,
@@ -159,8 +161,8 @@ class EvolutionAPIService:
             # Validate and parse webhook payload
             webhook = WebhookPayload.model_validate(webhook_data)
 
-            # Only process messages.upsert events
-            if webhook.event != "messages.upsert":
+            # Only process messages.upsert events (new messages)
+            if webhook.event not in ["messages.upsert", "MESSAGES_UPSERT"]:
                 logger.debug(f"Ignoring event: {webhook.event}")
                 return None
 
@@ -174,6 +176,16 @@ class EvolutionAPIService:
                 message_data = webhook.data[0]
             else:
                 message_data = webhook.data
+
+            # Skip if this is an update event (MessageUpdateData doesn't have key/message)
+            if isinstance(message_data, MessageUpdateData):
+                logger.debug("Skipping message update event")
+                return None
+
+            # At this point message_data is MessageData
+            if not message_data.key or not message_data.message:
+                logger.debug("No key or message in data")
+                return None
 
             # Don't respond to our own messages
             if message_data.key.fromMe:

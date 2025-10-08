@@ -36,7 +36,9 @@ class MessageUpdateData(BaseModel):
     remoteJid: str | None = Field(default=None, description="Remote JID")
     fromMe: bool | None = Field(default=None, description="Whether message is from us")
     participant: str | None = Field(default=None, description="Participant")
-    status: str | None = Field(default=None, description="Message status (READ, DELIVERED, etc)")
+    status: str | None = Field(
+        default=None, description="Message status (READ, DELIVERED, etc)"
+    )
     instanceId: str | None = Field(default=None, description="Instance ID")
 
 
@@ -54,9 +56,9 @@ class WebhookPayload(BaseModel):
 
     event: str = Field(..., description="Event type")
     instance: str = Field(..., description="Instance name")
-    data: MessageData | MessageUpdateData | list[MessageData] | list[MessageUpdateData] = Field(
-        ..., description="Message data or update data"
-    )
+    data: (
+        MessageData | MessageUpdateData | list[MessageData] | list[MessageUpdateData]
+    ) = Field(..., description="Message data or update data")
 
 
 class ParsedMessage(BaseModel):

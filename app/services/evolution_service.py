@@ -5,7 +5,6 @@ import httpx
 
 from app.core.config import settings
 from app.models.webhook import (
-    MessageData,  # Used for type narrowing in isinstance checks
     MessageUpdateData,
     ParsedMessage,
     SendMessageRequest,

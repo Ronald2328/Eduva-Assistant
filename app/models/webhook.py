@@ -1,7 +1,5 @@
 """Webhook data models for Evolution API."""
 
-from typing import Any
-
 from pydantic import BaseModel, Field
 
 
@@ -63,24 +61,6 @@ class SendMessageRequest(BaseModel):
 
     number: str = Field(..., description="Phone number to send message to")
     text: str = Field(..., description="Message text to send")
-
-
-class SendMessageResponse(BaseModel):
-    """Response from sending a message."""
-
-    key: dict[str, Any] | None = Field(default=None, description="Message key")
-    message: dict[str, Any] | None = Field(default=None, description="Message details")
-    status: str | None = Field(default=None, description="Message status")
-
-
-class InstanceResponse(BaseModel):
-    """Response from instance operations."""
-
-    instance: dict[str, Any] | None = Field(
-        default=None, description="Instance details"
-    )
-    hash: dict[str, Any] | None = Field(default=None, description="Instance hash")
-    qrcode: dict[str, Any] | None = Field(default=None, description="QR code data")
 
 
 class ConnectionState(BaseModel):

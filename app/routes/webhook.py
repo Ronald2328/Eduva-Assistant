@@ -4,36 +4,46 @@ import logging
 
 from fastapi import APIRouter, Request
 
-from app.core.config import settings
+from app.agent import agent
+from app.models.webhook import ParsedMessage
 from app.services.evolution_service import evolution_service
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(name=__name__)
 
 
-@router.post("/webhook")
+@router.post(path="/webhook")
 async def receive_message(request: Request) -> dict[str, str]:
-    """Recibir mensajes de Evolution API y responder automáticamente."""
+    """Recibir mensajes de Evolution API y responder con IA."""
     try:
         body = await request.json()
-        logger.info(f"Received webhook: {body}")
+        logger.info(msg=f"Received webhook: {body}")
 
         # Parsear el mensaje usando Evolution API service
-        parsed_message = evolution_service.parse_webhook_message(body)
+        parsed_message: ParsedMessage | None = evolution_service.parse_webhook_message(
+            webhook_data=body
+        )
 
         if parsed_message:
             logger.info(
-                f"Message from {parsed_message.phone_number} "
+                msg=f"Message from {parsed_message.phone_number} "
                 f"({parsed_message.push_name}): {parsed_message.text}"
             )
 
-            # Responder automáticamente con el mensaje configurado
+            # Generar respuesta usando el agente de IA
+            ai_response = await agent.process_message(
+                user_id=parsed_message.phone_number,
+                message=parsed_message.text,
+            )
+
+            # Enviar la respuesta generada por IA
             await evolution_service.send_message(
-                parsed_message.phone_number, settings.BOT_RESPONSE_MESSAGE
+                phone_number=parsed_message.phone_number,
+                message=ai_response,
             )
 
         return {"status": "success"}
 
     except Exception as e:
-        logger.error(f"Error processing webhook: {e}", exc_info=True)
-        return {"status": "error", "message": str(e)}
+        logger.error(msg=f"Error processing webhook: {e}", exc_info=True)
+        return {"status": "error", "message": str(object=e)}

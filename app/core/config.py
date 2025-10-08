@@ -44,7 +44,12 @@ class Settings(BaseSettings):
 
     # Bot Configuration
     BOT_NAME: str = Field(default="ScienceBot")
-    BOT_RESPONSE_MESSAGE: str = Field(default="Hola, soy sciencebot")
+
+    # OpenAI Configuration
+    OPENAI_API_KEY: str = Field(default="")
+    OPENAI_MODEL: str = Field(default="gpt-4o-mini")
+    OPENAI_MAX_TOKENS: int = Field(default=1000)
+    OPENAI_TEMPERATURE: float = Field(default=0)
 
     # Security
     SECRET_KEY: str

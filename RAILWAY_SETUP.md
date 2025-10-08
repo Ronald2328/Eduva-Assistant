@@ -4,7 +4,7 @@
 
 ✅ Evolution API corriendo en Railway: `https://evolution-api-production-be3e.up.railway.app`
 ✅ Instancia de WhatsApp: `sciencebot_instance`
-⚠️  Necesitas configurar el webhook para recibir y responder mensajes
+⚠️ Necesitas configurar el webhook para recibir y responder mensajes
 
 ## Opción 1: Desarrollo Local con ngrok (Recomendado para pruebas)
 
@@ -42,6 +42,7 @@ ngrok http 8000
 ```
 
 Verás algo como:
+
 ```
 Forwarding  https://abc123.ngrok.io -> http://localhost:8000
 ```
@@ -108,13 +109,15 @@ API_DEBUG=false
 SECRET_KEY=Sc13nc3B0t_2024_R4ilw4y_S3cr3t_K3y_9m8x7n2p5q1w4e6r
 ```
 
-**⚠️ IMPORTANTE:** 
+**⚠️ IMPORTANTE:**
+
 - Reemplaza `tu-app.railway.app` con la URL real que te dé Railway
 - Railway automáticamente asigna la variable `$PORT`
 
 ### Paso 4: Esperar el deploy
 
 Railway automáticamente:
+
 - Instalará dependencias con `uv`
 - Ejecutará el servidor con Uvicorn
 - Te dará una URL pública
@@ -132,6 +135,7 @@ uv run python test/test/configure_webhook.py
 ```
 
 O accede directamente a:
+
 ```
 https://tu-app.railway.app/webhook/set
 ```
@@ -207,6 +211,7 @@ curl http://localhost:8000/instance/status
 ## 📝 Eventos de Webhook Disponibles
 
 Actualmente configurado para escuchar:
+
 - ✅ `QRCODE_UPDATED` - Cuando se genera un nuevo QR
 - ✅ `MESSAGES_UPSERT` - Cuando llega un mensaje nuevo
 - ✅ `MESSAGES_UPDATE` - Cuando se actualiza un mensaje
@@ -214,6 +219,7 @@ Actualmente configurado para escuchar:
 - ✅ `CONNECTION_UPDATE` - Cuando cambia el estado de conexión
 
 Otros eventos disponibles en Evolution:
+
 - `APPLICATION_STARTUP`
 - `CALL`
 - `CHATS_DELETE`, `CHATS_SET`, `CHATS_UPDATE`, `CHATS_UPSERT`

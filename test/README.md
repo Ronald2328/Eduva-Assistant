@@ -9,18 +9,21 @@ Esta carpeta contiene scripts para configurar y verificar la integración con Ev
 Script para verificar la configuración y conexión con Evolution API.
 
 **Uso:**
+
 ```bash
 uv run python test/test_config.py
 ```
 
 **Qué hace:**
+
 - ✅ Muestra la configuración actual del `.env`
 - ✅ Verifica conexión con Evolution API
 - ✅ Obtiene el estado de la instancia
 - ✅ Verifica la configuración del webhook
-- ⚠️  Detecta problemas comunes y sugiere soluciones
+- ⚠️ Detecta problemas comunes y sugiere soluciones
 
 **Cuándo usarlo:**
+
 - Antes de iniciar el servidor por primera vez
 - Para diagnosticar problemas de conexión
 - Para verificar que Evolution API esté accesible
@@ -32,22 +35,26 @@ uv run python test/test_config.py
 Script para configurar el webhook en Evolution API.
 
 **Uso:**
+
 ```bash
 uv run python test/configure_webhook.py
 ```
 
 **Qué hace:**
+
 - ✅ Configura la URL del webhook en Evolution API
 - ✅ Configura los eventos que se van a escuchar
 - ✅ Verifica que la configuración sea correcta
-- ⚠️  Advierte si usas `localhost` con Evolution en Railway
+- ⚠️ Advierte si usas `localhost` con Evolution en Railway
 
 **Cuándo usarlo:**
+
 - Después de crear una instancia nueva
 - Cuando cambies la URL del webhook (ej: nueva URL de ngrok o Railway)
 - Para reconfigurar los eventos del webhook
 
 **Importante:**
+
 - Si Evolution API está en Railway, tu `WEBHOOK_URL` debe ser pública (no `localhost`)
 - Usa ngrok o despliega tu servidor para que Evolution pueda enviar webhooks
 

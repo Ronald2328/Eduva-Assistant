@@ -114,4 +114,3 @@ uv run ruff format app/
 ## 📝 Licencia
 
 MIT
-

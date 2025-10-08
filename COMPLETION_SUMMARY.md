@@ -29,11 +29,12 @@ BOT/
 ✅ **Evolution API URL**: `https://evolution-api-production-be3e.up.railway.app`
 ✅ **API Key**: `e4c367fe-e42c-4f73-bd77-30ea258f507a`
 ✅ **Instancia**: `Ronaldo` (estado: **open** - conectada)
-⚠️  **Webhook URL**: `http://localhost:8000/webhook` (necesita ser pública)
+⚠️ **Webhook URL**: `http://localhost:8000/webhook` (necesita ser pública)
 
 ### 3. Características Implementadas
 
 #### Modelos de Datos Tipados (Python 3.13)
+
 - ✅ `WebhookPayload` - Payload de webhooks de Evolution
 - ✅ `ParsedMessage` - Mensaje parseado y validado
 - ✅ `SendMessageRequest/Response` - Envío de mensajes
@@ -41,6 +42,7 @@ BOT/
 - ✅ Todo con tipado estricto y validación con Pydantic
 
 #### Endpoints API
+
 - ✅ `POST /webhook` - Recibir mensajes y responder automáticamente
 - ✅ `POST /webhook/set` - Configurar webhook en Evolution
 - ✅ `GET /webhook/get` - Ver configuración actual
@@ -51,6 +53,7 @@ BOT/
 - ✅ `GET /docs` - Documentación Swagger
 
 #### Scripts de Utilidad
+
 - ✅ `test/test_config.py` - Verificar conexión y configuración
 - ✅ `test/configure_webhook.py` - Configurar webhook automáticamente
 - ✅ `test/list_instances.py` - Listar instancias disponibles

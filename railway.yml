@@ -1,3 +1,4 @@
+# Configuration for FastAPI Bot Service
 build:
   builder: dockerfile
 
@@ -9,7 +10,8 @@ deploy:
 environments:
   production:
     variables:
-      EVOLUTION_API_URL: http://localhost:8080
+      # Evolution API URL - Update with your Evolution service URL
+      EVOLUTION_API_URL: https://your-evolution-service.up.railway.app
       EVOLUTION_API_KEY: Ev0l_API_K3y_9x7m2p8w4q5t1n6z3v8b2r7
       EVOLUTION_INSTANCE_NAME: sciencebot_instance
       BOT_NAME: ScienceBot

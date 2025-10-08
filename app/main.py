@@ -1,13 +1,15 @@
 import logging
-from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 
 from app.core.config import settings
-from app.services.evolution_service import evolution_service
+from app.routes import health, webhook
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
@@ -16,79 +18,9 @@ app = FastAPI(
     version=settings.APP_VERSION,
 )
 
-
-@app.get("/")
-async def root() -> dict[str, str]:
-    return {"message": f"¡{settings.BOT_NAME} está funcionando!", "status": "active"}
-
-
-@app.post("/webhook")
-async def receive_message(request: Request) -> dict[str, str]:
-    """Recibir mensajes de Evolution API."""
-    try:
-        body = await request.json()
-        logger.info(f"Received webhook: {body}")
-
-        # Parsear el mensaje usando Evolution API service
-        parsed_message = evolution_service.parse_webhook_message(body)
-
-        if parsed_message:
-            logger.info(
-                f"Message from {parsed_message.phone_number} "
-                f"({parsed_message.push_name}): {parsed_message.text}"
-            )
-
-            # Responder automáticamente con el mensaje configurado
-            await evolution_service.send_message(
-                parsed_message.phone_number, settings.BOT_RESPONSE_MESSAGE
-            )
-
-        return {"status": "success"}
-
-    except Exception as e:
-        logger.error(f"Error processing webhook: {e}", exc_info=True)
-        return {"status": "error", "message": str(e)}
-
-
-@app.get("/instance/create")
-async def create_instance() -> dict[str, Any]:
-    """Crear instancia de WhatsApp"""
-    result = await evolution_service.create_instance()
-    return result
-
-
-@app.get("/instance/qr")
-async def get_qr_code() -> dict[str, Any]:
-    """Obtener código QR para conectar WhatsApp"""
-    result = await evolution_service.get_qr_code()
-    return result
-
-
-@app.get("/instance/status")
-async def get_instance_status() -> dict[str, Any]:
-    """Obtener estado de la instancia"""
-    result = await evolution_service.get_instance_status()
-    return result
-
-
-@app.post("/webhook/set")
-async def set_webhook() -> dict[str, Any]:
-    """Configurar webhook para la instancia."""
-    result = await evolution_service.set_webhook()
-    return result
-
-
-@app.get("/webhook/get")
-async def get_webhook() -> dict[str, Any]:
-    """Obtener configuración actual del webhook."""
-    result = await evolution_service.get_webhook()
-    return result
-
-
-@app.get("/health")
-async def health_check() -> dict[str, str]:
-    """Health check endpoint"""
-    return {"status": "healthy", "bot": settings.BOT_NAME}
+# Include routers
+app.include_router(health.router, tags=["health"])
+app.include_router(webhook.router, tags=["webhook"])
 
 
 if __name__ == "__main__":

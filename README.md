@@ -60,14 +60,10 @@ uv run fastapi run
 
 ## 🔌 Endpoints Disponibles
 
-- `GET /` - Estado del bot
+- `GET /` - Estado del bot (con `ready: true`)
+- `GET /health` - Health check (liveness probe)
+- `GET /ready` - Readiness check (verifica que el servicio esté listo)
 - `POST /webhook` - Recibir mensajes de Evolution API
-- `GET /instance/create` - Crear instancia de WhatsApp
-- `GET /instance/qr` - Obtener código QR
-- `GET /instance/status` - Estado de la instancia
-- `POST /webhook/set` - Configurar webhook
-- `GET /webhook/get` - Ver configuración del webhook
-- `GET /health` - Health check
 - `GET /docs` - Documentación interactiva (Swagger)
 
 ## 🏗️ Estructura del Proyecto
@@ -75,7 +71,10 @@ uv run fastapi run
 ```
 BOT/
 ├── app/
-│   ├── main.py              # Aplicación FastAPI
+│   ├── main.py              # Aplicación FastAPI principal
+│   ├── routes/
+│   │   ├── health.py        # Health check y root
+│   │   └── webhook.py       # Recepción de mensajes
 │   ├── core/
 │   │   └── config.py        # Configuración con Pydantic Settings
 │   ├── models/

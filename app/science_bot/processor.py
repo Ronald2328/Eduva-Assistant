@@ -5,6 +5,8 @@ from langchain_core.messages import HumanMessage
 from app.science_bot.agent.graph import get_graph
 from app.science_bot.agent.schemas import Context, InputState
 
+__all__: list[str] = ["process_message"]
+
 
 async def process_message(user_id: str, message: str) -> str:
     """Process a message using the science bot graph.
@@ -22,7 +24,7 @@ async def process_message(user_id: str, message: str) -> str:
     state = InputState(messages=[HumanMessage(content=message)])
 
     # Invoke the graph with context
-    response = await graph.ainvoke(
+    response = await graph.ainvoke( # type: ignore
         input=state,
         context=Context(user_id=user_id),
         config={

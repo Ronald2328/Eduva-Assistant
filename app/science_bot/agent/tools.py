@@ -2,6 +2,7 @@ import datetime
 from zoneinfo import ZoneInfo
 
 from langchain_core.tools import tool  # type: ignore
+from langchain_core.tools.base import BaseTool
 from pydantic import BaseModel
 
 
@@ -24,7 +25,7 @@ async def get_time_by_country(country: str) -> dict[str, str]:
     """
 
     # Common country to timezone mappings
-    country_timezones = {
+    country_timezones: dict[str, str] = {
         "spain": "Europe/Madrid",
         "usa": "America/New_York",
         "united states": "America/New_York",
@@ -51,8 +52,8 @@ async def get_time_by_country(country: str) -> dict[str, str]:
         "paraguay": "America/Asuncion"
     }
 
-    country_lower = country.lower().strip()
-    timezone_str = country_timezones.get(country_lower)
+    country_lower: str = country.lower().strip()
+    timezone_str: str | None = country_timezones.get(country_lower)
 
     if not timezone_str:
         # If country not found, return UTC time
@@ -61,29 +62,29 @@ async def get_time_by_country(country: str) -> dict[str, str]:
 
     try:
         # Get timezone and current time
-        tz = ZoneInfo(timezone_str)
-        current_time = datetime.datetime.now(tz)
+        tz = ZoneInfo(key=timezone_str)
+        current_time: datetime.datetime = datetime.datetime.now(tz)
 
         time_info = CountryTimeInfo(
             country=country,
             timezone=timezone_str,
             current_time=current_time.isoformat(),
-            formatted_time=current_time.strftime("%Y-%m-%d %H:%M:%S %Z")
+            formatted_time=current_time.strftime(format="%Y-%m-%d %H:%M:%S %Z")
         )
 
         return time_info.model_dump()
 
     except Exception:
         # Fallback to UTC if there's any error
-        utc_time = datetime.datetime.now(datetime.UTC)
+        utc_time: datetime.datetime = datetime.datetime.now(tz=datetime.UTC)
         time_info = CountryTimeInfo(
             country=f"{country} (error, usando UTC)",
             timezone="UTC",
             current_time=utc_time.isoformat(),
-            formatted_time=utc_time.strftime("%Y-%m-%d %H:%M:%S UTC")
+            formatted_time=utc_time.strftime(format="%Y-%m-%d %H:%M:%S UTC")
         )
 
         return time_info.model_dump()
 
 
-TOOLS = [get_time_by_country]
+TOOLS: list[BaseTool] = [get_time_by_country]

@@ -72,11 +72,23 @@ class ParsedMessage(BaseModel):
     timestamp: int | None = Field(default=None, description="Message timestamp")
 
 
-class SendMessageRequest(BaseModel):
-    """Request to send a message."""
+class SendMessageResponseData(BaseModel):
+    """Response data from sending a message."""
 
-    number: str = Field(..., description="Phone number to send message to")
-    text: str = Field(..., description="Message text to send")
+    key: MessageKey = Field(..., description="Message key")
+    message: MessageContent = Field(..., description="Message content")
+    messageTimestamp: int = Field(..., description="Message timestamp")
+    status: str | None = Field(default=None, description="Message status")
+
+
+class SendMessageResponse(BaseModel):
+    """Response from sending a message."""
+
+    error: bool = Field(default=False, description="Whether there was an error")
+    message: str | None = Field(default=None, description="Error message if any")
+    data: SendMessageResponseData | None = Field(
+        default=None, description="Response data"
+    )
 
 
 class ConnectionState(BaseModel):
@@ -84,23 +96,3 @@ class ConnectionState(BaseModel):
 
     instance: str = Field(..., description="Instance name")
     state: str = Field(..., description="Connection state")
-
-
-class WebhookConfig(BaseModel):
-    """Webhook configuration for Evolution API."""
-
-    url: str = Field(..., description="Webhook URL")
-    webhook_by_events: bool = Field(
-        default=False, description="Whether to send webhooks by event type"
-    )
-    webhook_base64: bool = Field(
-        default=False, description="Whether to send media as base64"
-    )
-    events: list[str] = Field(
-        default_factory=lambda: [
-            "MESSAGES_UPSERT",
-            "MESSAGES_UPDATE",
-            "SEND_MESSAGE",
-        ],
-        description="Events to listen to",
-    )

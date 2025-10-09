@@ -7,17 +7,20 @@ authors = [{ name = "Ronaldo Olivares", email = "ronaldoolivarespalacios@gmail.c
 requires-python = ">=3.13"
 dependencies = [
     "fastapi[standard]>=0.116.1",
+    "langchain-openai>=0.3.30",
+    "langgraph>=0.6.6",
+    "logfire[fastapi,fastapihttpx,httpx,openai]>=4.3.5",
     "pydantic-settings>=2.10.1",
     "scalar-fastapi>=1.2.3",
-    "httpx>=0.27.0",
-    "ruff>=0.14.0",
-    "openai>=1.58.1",
+    "supabase>=2.18.1",
+    "uvicorn>=0.37.0",
 ]
 [dependency-groups]
 dev = [
+    "langgraph-api>=0.3.0",
+    "langgraph-cli>=0.3.7",
     "mypy>=1.17.1",
     "ruff>=0.12.9",
-    "types-requests>=2.32.4.20250913",
 ]
 
 [tool.mypy]

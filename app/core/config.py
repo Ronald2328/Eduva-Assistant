@@ -53,6 +53,7 @@ class Settings(BaseSettings):
 
     # Security
     SECRET_KEY: str
+    LOGFIRE_TOKEN: str = Field(default="")
 
     model_config = {
         "env_file": ".env",

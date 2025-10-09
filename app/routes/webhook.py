@@ -4,8 +4,8 @@ import logging
 
 from fastapi import APIRouter, Request
 
-from app.agent import agent
 from app.models.webhook import ParsedMessage
+from app.science_bot import agent
 from app.services.evolution_service import evolution_service
 
 router = APIRouter()

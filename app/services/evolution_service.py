@@ -1,4 +1,3 @@
-import logging
 import re
 
 import httpx
@@ -11,8 +10,6 @@ from app.models.webhook import (
     SendMessageResponse,
     WebhookPayload,
 )
-
-logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 class EvolutionAPIService:
@@ -47,14 +44,12 @@ class EvolutionAPIService:
                     url=url, json=payload, headers=self.headers
                 )
                 response.raise_for_status()
-                logger.info(msg=f"Message sent to {phone_number}")
 
                 return SendMessageResponse(
                     error=False, message="Message sent successfully"
                 )
 
             except httpx.HTTPError as e:
-                logger.error(msg=f"Error sending message: {e}")
                 return SendMessageResponse(error=True, message=str(object=e))
 
     def parse_webhook_message(
@@ -100,8 +95,7 @@ class EvolutionAPIService:
                 timestamp=message_data.messageTimestamp,
             )
 
-        except Exception as e:
-            logger.error(msg=f"Error parsing webhook message: {e}")
+        except Exception:
             return None
 
 

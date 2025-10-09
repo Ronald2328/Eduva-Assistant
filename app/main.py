@@ -1,5 +1,6 @@
 import logfire
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from scalar_fastapi import get_scalar_api_reference  # type: ignore
 
 from app.core.config import Environment, settings
@@ -14,12 +15,12 @@ app = FastAPI(
     version=settings.APP_VERSION,
 )
 
-app.include_router(api_router)
+app.include_router(router=api_router)
 
 if settings.ENVIRONMENT == Environment.DEV:
 
-    @app.get("/docs", include_in_schema=False)
-    async def scalar_api_reference():
+    @app.get(path="/docs", include_in_schema=False)
+    async def scalar_api_reference() -> HTMLResponse:
         if app.openapi_url is None:
             raise RuntimeError("OpenAPI URL is not set")
 

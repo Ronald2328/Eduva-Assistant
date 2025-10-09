@@ -44,12 +44,14 @@ async def chat(state: InputState) -> dict[str, list[BaseMessage]]:
         ]
     )
 
-    response: BaseMessage = await (prompt | model_with_tools).ainvoke(input={"messages": state.messages})  # type: ignore
+    response: BaseMessage = await (prompt | model_with_tools).ainvoke(  # type: ignore
+        input={"messages": state.messages}
+    )
 
     return {"messages": [response]}
 
 
-async def should_continue(state: OverallState) -> Literal['tools'] | Literal['__end__']:
+async def should_continue(state: OverallState) -> Literal["tools"] | Literal["__end__"]:
     messages = state.messages
     last_message: BaseMessage = messages[-1]
     if last_message.tool_calls:  # type: ignore
@@ -61,7 +63,9 @@ graph_builder.add_node(node="chat", action=chat)  # type: ignore
 graph_builder.add_node(node="tools", action=ToolNode(tools=TOOLS))  # type: ignore
 
 graph_builder.set_entry_point("chat")
-graph_builder.add_conditional_edges(source="chat", path=should_continue, path_map=["tools", "__end__"])
+graph_builder.add_conditional_edges(
+    source="chat", path=should_continue, path_map=["tools", "__end__"]
+)
 graph_builder.add_edge(start_key="tools", end_key="chat")
 
 

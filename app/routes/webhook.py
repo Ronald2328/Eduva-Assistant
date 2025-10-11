@@ -1,7 +1,5 @@
 """Webhook routes for receiving messages from Evolution API."""
 
-import time
-
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
@@ -39,22 +37,17 @@ async def receive_message(request: Request) -> WebhookResponse:
                 message_id=parsed_message.message_id,
             )
 
-            # Process the message with the science bot
-            start_time = time.time()
-
-            ai_response = await process_message(
-                user_id=parsed_message.phone_number,
-                message=parsed_message.text,
-            )
-
-            processing_time_ms = int((time.time() - start_time) * 1000)
-
-            # Show "typing" presence while processing
+            # Show "typing" presence before processing
             await evolution_service.send_presence(
                 phone_number=parsed_message.phone_number,
                 instance_name=webhook_payload.instance,
                 state="composing",
-                delay=processing_time_ms,
+            )
+
+            # Process the message with the science bot
+            ai_response = await process_message(
+                user_id=parsed_message.phone_number,
+                message=parsed_message.text,
             )
 
             # Send the AI-generated response back via Evolution API

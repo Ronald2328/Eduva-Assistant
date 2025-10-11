@@ -61,7 +61,7 @@ class EvolutionAPIService:
         phone_number: str,
         instance_name: str,
         state: str = "composing",
-        delay: int = 1200,
+        delay: int = 30000,
     ) -> PresenceResponse:
         """Send presence status (typing, recording, etc) to a WhatsApp number.
 
@@ -69,7 +69,7 @@ class EvolutionAPIService:
             phone_number: Phone number to send presence to
             instance_name: Evolution API instance name
             state: Presence state - 'composing' (typing), 'recording', 'available', etc.
-            delay: Duration in milliseconds (default 1200ms)
+            delay: Duration in milliseconds (default 30000ms = 30 seconds)
 
         Returns:
             PresenceResponse with success/error status

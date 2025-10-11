@@ -46,13 +46,11 @@ async def process_message(user_id: str, message: str) -> str:
         response_content = (
             str(object=last_message.content)
             if last_message.content
-            else "No pude generar una respuesta."
+            else "I'm not sure how to respond to that."
         )
 
         # Add assistant response to conversation history
-        conversation_manager.add_assistant_message(
-            user_id, content=response_content
-        )
+        conversation_manager.add_assistant_message(user_id, content=response_content)
 
         return response_content
 

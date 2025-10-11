@@ -57,7 +57,11 @@ class EvolutionAPIService:
                 return SendMessageResponse(error=True, message=str(object=e))
 
     async def send_presence(
-        self, phone_number: str, instance_name: str, state: str = "composing"
+        self,
+        phone_number: str,
+        instance_name: str,
+        state: str = "composing",
+        delay: int = 1200,
     ) -> PresenceResponse:
         """Send presence status (typing, recording, etc) to a WhatsApp number.
 
@@ -65,6 +69,7 @@ class EvolutionAPIService:
             phone_number: Phone number to send presence to
             instance_name: Evolution API instance name
             state: Presence state - 'composing' (typing), 'recording', 'available', etc.
+            delay: Duration in milliseconds (default 1200ms)
 
         Returns:
             PresenceResponse with success/error status
@@ -76,11 +81,8 @@ class EvolutionAPIService:
         payload: dict[str, str | int] = {
             "number": formatted_number,
             "presence": state,
-            "delay": 1200,  # Duración en milisegundos (1.2 segundos)
+            "delay": delay,
         }
-
-        print(f"   📤 POST {url}")
-        print(f"   📦 Payload: {payload}")
 
         async with httpx.AsyncClient() as client:
             try:
@@ -89,21 +91,11 @@ class EvolutionAPIService:
                 )
                 response.raise_for_status()
 
-                print(f"   ✅ Status: {response.status_code}")
-
                 return PresenceResponse(
                     error=False, message="Presence sent successfully"
                 )
 
             except httpx.HTTPError as e:
-                error_detail = ""
-                try:
-                    # Intentar obtener el detalle de la respuesta
-                    if isinstance(e, httpx.HTTPStatusError):
-                        error_detail = f" - Detalle: {e.response.text}"
-                except Exception:
-                    pass
-                print(f"   ❌ HTTP Error: {str(e)}{error_detail}")
                 return PresenceResponse(error=True, message=str(object=e))
 
     async def mark_message_as_read(
@@ -134,9 +126,6 @@ class EvolutionAPIService:
             ]
         }
 
-        print(f"   📤 POST {url}")
-        print(f"   📦 Payload: {payload}")
-
         async with httpx.AsyncClient() as client:
             try:
                 response: httpx.Response = await client.post(
@@ -144,21 +133,11 @@ class EvolutionAPIService:
                 )
                 response.raise_for_status()
 
-                print(f"   ✅ Status: {response.status_code}")
-
                 return ReadMessageResponse(
                     error=False, message="Message marked as read"
                 )
 
             except httpx.HTTPError as e:
-                error_detail = ""
-                try:
-                    # Intentar obtener el detalle de la respuesta
-                    if isinstance(e, httpx.HTTPStatusError):
-                        error_detail = f" - Detalle: {e.response.text}"
-                except Exception:
-                    pass
-                print(f"   ❌ HTTP Error: {str(e)}{error_detail}")
                 return ReadMessageResponse(error=True, message=str(object=e))
 
     def parse_webhook_message(

@@ -7,6 +7,8 @@ from app.models.webhook import (
     MessageData,
     MessageUpdateData,
     ParsedMessage,
+    PresenceResponse,
+    ReadMessageResponse,
     SendMessageResponse,
     WebhookPayload,
 )
@@ -18,21 +20,23 @@ class EvolutionAPIService:
     def __init__(self) -> None:
         self.base_url: str = settings.EVOLUTION_API_URL
         self.api_key: str = settings.EVOLUTION_API_KEY
-        self.instance_name: str = settings.EVOLUTION_INSTANCE_NAME
-        self.headers: dict[str, str] = {
-            "apikey": self.api_key,
-            "Content-Type": "application/json",
-        }
 
     def _format_phone_number(self, phone_number: str) -> str:
         """Format phone number for WhatsApp (remove non-digits)."""
         return re.sub(pattern=r"[^\d]", repl="", string=phone_number)
 
+    def _get_headers(self) -> dict[str, str]:
+        """Get headers for Evolution API requests."""
+        return {
+            "apikey": self.api_key,
+            "Content-Type": "application/json",
+        }
+
     async def send_message(
-        self, phone_number: str, message: str
+        self, phone_number: str, message: str, instance_name: str
     ) -> SendMessageResponse:
         """Send a text message to a WhatsApp number."""
-        url: str = f"{self.base_url}/message/sendText/{self.instance_name}"
+        url: str = f"{self.base_url}/message/sendText/{instance_name}"
         payload: dict[str, str] = {
             "number": self._format_phone_number(phone_number=phone_number),
             "text": message,
@@ -41,7 +45,7 @@ class EvolutionAPIService:
         async with httpx.AsyncClient() as client:
             try:
                 response: httpx.Response = await client.post(
-                    url=url, json=payload, headers=self.headers
+                    url=url, json=payload, headers=self._get_headers()
                 )
                 response.raise_for_status()
 
@@ -52,18 +56,123 @@ class EvolutionAPIService:
             except httpx.HTTPError as e:
                 return SendMessageResponse(error=True, message=str(object=e))
 
+    async def send_presence(
+        self, phone_number: str, instance_name: str, state: str = "composing"
+    ) -> PresenceResponse:
+        """Send presence status (typing, recording, etc) to a WhatsApp number.
+
+        Args:
+            phone_number: Phone number to send presence to
+            instance_name: Evolution API instance name
+            state: Presence state - 'composing' (typing), 'recording', 'available', etc.
+
+        Returns:
+            PresenceResponse with success/error status
+        """
+        url: str = f"{self.base_url}/chat/sendPresence/{instance_name}"
+
+        formatted_number = self._format_phone_number(phone_number=phone_number)
+
+        payload: dict[str, str | int] = {
+            "number": formatted_number,
+            "presence": state,
+            "delay": 1200,  # Duración en milisegundos (1.2 segundos)
+        }
+
+        print(f"   📤 POST {url}")
+        print(f"   📦 Payload: {payload}")
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response: httpx.Response = await client.post(
+                    url=url, json=payload, headers=self._get_headers()
+                )
+                response.raise_for_status()
+
+                print(f"   ✅ Status: {response.status_code}")
+
+                return PresenceResponse(
+                    error=False, message="Presence sent successfully"
+                )
+
+            except httpx.HTTPError as e:
+                error_detail = ""
+                try:
+                    # Intentar obtener el detalle de la respuesta
+                    if isinstance(e, httpx.HTTPStatusError):
+                        error_detail = f" - Detalle: {e.response.text}"
+                except Exception:
+                    pass
+                print(f"   ❌ HTTP Error: {str(e)}{error_detail}")
+                return PresenceResponse(error=True, message=str(object=e))
+
+    async def mark_message_as_read(
+        self, phone_number: str, instance_name: str, message_id: str
+    ) -> ReadMessageResponse:
+        """Mark a message as read in WhatsApp.
+
+        Args:
+            phone_number: Phone number (remote JID)
+            instance_name: Evolution API instance name
+            message_id: ID of the message to mark as read
+
+        Returns:
+            ReadMessageResponse with success/error status
+        """
+        url: str = f"{self.base_url}/chat/markMessageAsRead/{instance_name}"
+
+        formatted_number = self._format_phone_number(phone_number=phone_number)
+        remote_jid = f"{formatted_number}@s.whatsapp.net"
+
+        payload: dict[str, list[dict[str, str | bool]]] = {
+            "readMessages": [
+                {
+                    "remoteJid": remote_jid,
+                    "id": message_id,
+                    "fromMe": False,
+                }
+            ]
+        }
+
+        print(f"   📤 POST {url}")
+        print(f"   📦 Payload: {payload}")
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response: httpx.Response = await client.post(
+                    url=url, json=payload, headers=self._get_headers()
+                )
+                response.raise_for_status()
+
+                print(f"   ✅ Status: {response.status_code}")
+
+                return ReadMessageResponse(
+                    error=False, message="Message marked as read"
+                )
+
+            except httpx.HTTPError as e:
+                error_detail = ""
+                try:
+                    # Intentar obtener el detalle de la respuesta
+                    if isinstance(e, httpx.HTTPStatusError):
+                        error_detail = f" - Detalle: {e.response.text}"
+                except Exception:
+                    pass
+                print(f"   ❌ HTTP Error: {str(e)}{error_detail}")
+                return ReadMessageResponse(error=True, message=str(object=e))
+
     def parse_webhook_message(
-        self, webhook_data: dict[str, object]
+        self, webhook_payload: WebhookPayload
     ) -> ParsedMessage | None:
         """Parse incoming webhook message from Evolution API."""
         try:
-            webhook: WebhookPayload = WebhookPayload.model_validate(obj=webhook_data)
-
-            if webhook.event not in ["messages.upsert", "MESSAGES_UPSERT"]:
+            if webhook_payload.event not in ["messages.upsert", "MESSAGES_UPSERT"]:
                 return None
 
             message_data: MessageData | MessageUpdateData = (
-                webhook.data[0] if isinstance(webhook.data, list) else webhook.data
+                webhook_payload.data[0]
+                if isinstance(webhook_payload.data, list)
+                else webhook_payload.data
             )
 
             if (

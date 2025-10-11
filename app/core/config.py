@@ -18,21 +18,8 @@ class Settings(BaseSettings):
     # Evolution API Configuration
     EVOLUTION_API_URL: str = Field(default="http://localhost:8080")
     EVOLUTION_API_KEY: str = Field(default="mi_api_key_evolution")
-    EVOLUTION_INSTANCE_NAME: str = Field(default="bot_instance")
-
-    # API Configuration
-    API_HOST: str = Field(default="0.0.0.0")
-    API_PORT: int = Field(default=8000)
-    API_DEBUG: bool = Field(default=True)
 
     # Webhook Configuration
-    WEBHOOK_URL: str = Field(
-        default="http://localhost:8000/webhook",
-        description="URL where Evolution API will send webhooks",
-    )
-    WEBHOOK_ENABLED: bool = Field(
-        default=True, description="Enable webhook configuration"
-    )
     WEBHOOK_EVENTS: list[str] = Field(
         default_factory=lambda: [
             "MESSAGES_UPSERT",
@@ -52,7 +39,6 @@ class Settings(BaseSettings):
     OPENAI_TEMPERATURE: float = Field(default=0)
 
     # Security
-    SECRET_KEY: str
     LOGFIRE_TOKEN: str = Field(default="")
 
     model_config = {

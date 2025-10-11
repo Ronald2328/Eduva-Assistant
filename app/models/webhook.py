@@ -11,6 +11,35 @@ class MessageKey(BaseModel):
     id: str = Field(..., description="Message ID")
 
 
+class DeviceListMetadata(BaseModel):
+    """Device list metadata."""
+
+    senderKeyHash: str | None = Field(default=None, description="Sender key hash")
+    senderTimestamp: str | None = Field(default=None, description="Sender timestamp")
+    senderAccountType: str | None = Field(
+        default=None, description="Sender account type"
+    )
+    receiverAccountType: str | None = Field(
+        default=None, description="Receiver account type"
+    )
+    recipientKeyHash: str | None = Field(default=None, description="Recipient key hash")
+    recipientTimestamp: str | None = Field(
+        default=None, description="Recipient timestamp"
+    )
+
+
+class MessageContextInfo(BaseModel):
+    """Message context information."""
+
+    deviceListMetadata: DeviceListMetadata | None = Field(
+        default=None, description="Device list metadata"
+    )
+    deviceListMetadataVersion: int | None = Field(
+        default=None, description="Device list metadata version"
+    )
+    messageSecret: str | None = Field(default=None, description="Message secret")
+
+
 class ExtendedTextMessage(BaseModel):
     """Extended text message."""
 
@@ -25,6 +54,9 @@ class MessageContent(BaseModel):
     )
     extendedTextMessage: ExtendedTextMessage | None = Field(
         default=None, description="Extended text message"
+    )
+    messageContextInfo: MessageContextInfo | None = Field(
+        default=None, description="Message context information"
     )
 
 
@@ -49,6 +81,12 @@ class MessageData(BaseModel):
     message: MessageContent | None = Field(default=None, description="Message content")
     messageTimestamp: int | None = Field(default=None, description="Message timestamp")
     pushName: str | None = Field(default=None, description="Contact name")
+    messageType: str | None = Field(default=None, description="Message type")
+    instanceId: str | None = Field(default=None, description="Instance ID")
+    source: str | None = Field(default=None, description="Message source")
+    contextInfo: dict[str, object] | None = Field(
+        default=None, description="Context info"
+    )
 
 
 class WebhookPayload(BaseModel):
@@ -59,6 +97,11 @@ class WebhookPayload(BaseModel):
     data: (
         MessageData | MessageUpdateData | list[MessageData] | list[MessageUpdateData]
     ) = Field(..., description="Message data or update data")
+    destination: str | None = Field(default=None, description="Webhook destination URL")
+    date_time: str | None = Field(default=None, description="Event date and time")
+    sender: str | None = Field(default=None, description="Sender JID")
+    server_url: str | None = Field(default=None, description="Evolution API server URL")
+    apikey: str | None = Field(default=None, description="API key")
 
 
 class ParsedMessage(BaseModel):
@@ -89,6 +132,20 @@ class SendMessageResponse(BaseModel):
     data: SendMessageResponseData | None = Field(
         default=None, description="Response data"
     )
+
+
+class PresenceResponse(BaseModel):
+    """Response from sending presence (typing, recording, etc)."""
+
+    error: bool = Field(default=False, description="Whether there was an error")
+    message: str | None = Field(default=None, description="Error message if any")
+
+
+class ReadMessageResponse(BaseModel):
+    """Response from marking message as read."""
+
+    error: bool = Field(default=False, description="Whether there was an error")
+    message: str | None = Field(default=None, description="Error message if any")
 
 
 class ConnectionState(BaseModel):

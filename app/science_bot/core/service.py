@@ -1,12 +1,10 @@
-"""Science Bot Agent module for processing messages."""
+"""Science Bot Service for processing messages with conversation history."""
 
 from langchain_core.messages.base import BaseMessage
 
 from app.science_bot.agent.graph import get_graph
 from app.science_bot.agent.schemas import Context, InputState
-from app.science_bot.conversation_manager import conversation_manager
-
-__all__: list[str] = ["process_message"]
+from app.science_bot.core.conversation_manager import conversation_manager
 
 
 async def process_message(user_id: str, message: str) -> str:
@@ -24,8 +22,11 @@ async def process_message(user_id: str, message: str) -> str:
         conversation_manager.add_user_message(user_id=user_id, content=message)
 
         # Get full conversation history for context
-        conversation_history: list[BaseMessage] = conversation_manager.get_conversation_history(user_id=user_id)
+        conversation_history: list[BaseMessage] = (
+            conversation_manager.get_conversation_history(user_id=user_id)
+        )
 
+        # Get graph instance
         graph = get_graph()
 
         # Create input state with full conversation history
@@ -49,14 +50,18 @@ async def process_message(user_id: str, message: str) -> str:
         )
 
         # Add assistant response to conversation history
-        conversation_manager.add_assistant_message(user_id, content=response_content)
+        conversation_manager.add_assistant_message(
+            user_id, content=response_content
+        )
 
         return response_content
 
     except Exception:
-        error_response = "Lo siento, ocurrió un error al procesar tu mensaje. Por favor, intenta de nuevo."
+        error_response = "Sorry, something went wrong. Please try again later."
 
         # Still add the error response to history to maintain conversation flow
-        conversation_manager.add_assistant_message(user_id=user_id, content=error_response)
+        conversation_manager.add_assistant_message(
+            user_id=user_id, content=error_response
+        )
 
         return error_response

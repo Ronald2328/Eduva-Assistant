@@ -1,6 +1,6 @@
 """Conversation history manager for Science Bot."""
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
 
 class ConversationManager:
@@ -9,13 +9,6 @@ class ConversationManager:
     def __init__(self) -> None:
         """Initialize the conversation manager."""
         self.conversations: dict[str, list[BaseMessage]] = {}
-
-        # System message for the science bot
-        self.system_message = SystemMessage(
-            content="Eres ScienceBot, un asistente virtual inteligente especializado en ciencia. "
-            "Tu objetivo es ayudar a los usuarios de manera amigable y profesional. "
-            "Responde de forma clara, concisa y útil, especialmente en temas científicos."
-        )
 
     def get_conversation_history(self, user_id: str) -> list[BaseMessage]:
         """Get or create conversation history for a user.
@@ -27,7 +20,7 @@ class ConversationManager:
             List of conversation messages
         """
         if user_id not in self.conversations:
-            self.conversations[user_id] = [self.system_message]
+            self.conversations[user_id] = []
 
         return self.conversations[user_id]
 
@@ -42,8 +35,12 @@ class ConversationManager:
         history.append(message)
 
         # Limit history to last 20 messages (10 user + 10 assistant)
-        user_messages: list[HumanMessage] = [msg for msg in history if isinstance(msg, HumanMessage)]
-        assistant_messages: list[AIMessage] = [msg for msg in history if isinstance(msg, AIMessage)]
+        user_messages: list[HumanMessage] = [
+            msg for msg in history if isinstance(msg, HumanMessage)
+        ]
+        assistant_messages: list[AIMessage] = [
+            msg for msg in history if isinstance(msg, AIMessage)
+        ]
 
         # Keep last 10 of each type
         if len(user_messages) > 10:
@@ -73,7 +70,7 @@ class ConversationManager:
             content: The message content
         """
         message = HumanMessage(content=content)
-        self.add_message(user_id, message)
+        self.add_message(user_id=user_id, message=message)
 
     def add_assistant_message(self, user_id: str, content: str) -> None:
         """Add an assistant message to the conversation.
@@ -83,7 +80,7 @@ class ConversationManager:
             content: The message content
         """
         message = AIMessage(content=content)
-        self.add_message(user_id, message)
+        self.add_message(user_id=user_id, message=message)
 
 
 # Global conversation manager instance

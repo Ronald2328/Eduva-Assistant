@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from langchain_openai import OpenAIEmbeddings
@@ -184,4 +185,4 @@ class MongoDBService:
     async def close_connection(self) -> None:
         """Close MongoDB connection."""
         if self.mongo_client:
-            self.mongo_client.close()
+            await asyncio.to_thread(self.mongo_client.close)

@@ -181,6 +181,7 @@ class SearchDocumentsService:
             Final service response
         """
         try:
+            # Step 1: Get relevant documents
             documents = await self.get_relevant_documents(school)
 
             if not documents:
@@ -189,8 +190,10 @@ class SearchDocumentsService:
                     message=f"No documents found for school: {school}",
                 )
 
+            # Step 2: Select best document
             selected_document = await self.select_best_document(query, documents)
 
+            # Step 3: Search in selected document
             pages = await self.search_in_document(
                 query, selected_document, limit=max_pages
             )
@@ -202,6 +205,7 @@ class SearchDocumentsService:
                     document_used=selected_document,
                 )
 
+            # Step 4: Generate final answer
             answer_response = await self.generate_answer(
                 query, selected_document, pages
             )

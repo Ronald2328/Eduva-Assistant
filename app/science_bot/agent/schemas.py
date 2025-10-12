@@ -29,6 +29,7 @@ class InputState:
 
 @dataclass
 class OutputState:
+    success: bool
     messages: Messages
 
 

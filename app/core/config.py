@@ -41,6 +41,7 @@ class Settings(BaseSettings):
 
     # MongoDB Atlas Configuration
     MONGO_URL: str = Field(default="mongodb://localhost:27017")
+    MONGO_DATABASE: str = Field(default="ScienceBot")
     MONGO_DOCUMENTS_COLLECTION: str = Field(default="Documents")
     MONGO_PAGES_COLLECTION: str = Field(default="ScienceBot")
 

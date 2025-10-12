@@ -60,4 +60,5 @@ async def receive_message(request: Request) -> WebhookResponse:
         return WebhookResponse(status="success")
 
     except Exception as e:
+        print(f"[ERROR] Webhook error: {str(e)}")
         return WebhookResponse(status="error", message=str(e))

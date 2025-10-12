@@ -58,17 +58,17 @@ class MongoDBService:
         )
         self.db: AsyncIOMotorDatabase[Any] | None = None
 
-    async def connect_db(self, database_name: str) -> AsyncIOMotorDatabase[Any]:
+    async def connect_db(self) -> AsyncIOMotorDatabase[Any]:
         """Connect to MongoDB database.
 
         Args:
-            database_name: Name of the database to connect to
+            database_name: Name of the database to connect to.
 
         Returns:
             MongoDB database instance
         """
         await self.mongo_client.admin.command("ping")
-        self.db = self.mongo_client[database_name]
+        self.db = self.mongo_client[settings.MONGO_DATABASE]
         return self.db
 
     async def query_to_embedding(self, query: str) -> list[float]:
@@ -98,6 +98,7 @@ class MongoDBService:
         collection: AsyncIOMotorCollection[dict[str, Any]] = self.db[
             settings.MONGO_DOCUMENTS_COLLECTION
         ]
+
         cursor = collection.find({"tipo": school})
         documents: list[DocumentInfo] = []
 
@@ -123,7 +124,7 @@ class MongoDBService:
 
         Args:
             query: Search text
-            document_name: Document name to filter by (optional)
+            document_name: Document name to filter by
             limit: Maximum number of results to return
 
         Returns:
@@ -138,16 +139,21 @@ class MongoDBService:
             settings.MONGO_PAGES_COLLECTION
         ]
 
+        # Build $vectorSearch with filter
+        vector_search: dict[str, Any] = {
+            "index": "default",
+            "queryVector": query_embedding,
+            "path": "embedding",
+            "numCandidates": limit * 10,
+            "limit": limit,
+        }
+
+        # Add filter for document name if provided
+        if document_name:
+            vector_search["filter"] = {"nombre_archivo": document_name}
+
         pipeline: list[dict[str, Any]] = [
-            {
-                "$vectorSearch": {
-                    "index": "vector_index",
-                    "queryVector": query_embedding,
-                    "path": "embedding",
-                    "exact": True,
-                    "limit": limit * 2,
-                }
-            },
+            {"$vectorSearch": vector_search},
             {
                 "$project": {
                     "_id": 1,
@@ -158,11 +164,6 @@ class MongoDBService:
                 }
             },
         ]
-
-        if document_name:
-            pipeline.insert(1, {"$match": {"nombre_archivo": document_name}})
-
-        pipeline.append({"$limit": limit})
 
         cursor = collection.aggregate(pipeline)
         results: list[PageMatch] = []

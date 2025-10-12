@@ -1,3 +1,4 @@
+import traceback
 from typing import Literal
 
 from langchain_core.messages.base import BaseMessage
@@ -41,7 +42,13 @@ async def chat(
         max_completion_tokens=settings.OPENAI_MAX_TOKENS,
         temperature=settings.OPENAI_TEMPERATURE,
     )
-    model_with_tools = model.bind_tools(tools=TOOLS, strict=True)  # type: ignore
+
+    try:
+        model_with_tools = model.bind_tools(tools=TOOLS, strict=True)  # type: ignore
+    except Exception as e:
+        print(f"[ERROR] Failed to bind tools: {str(e)}")
+        print(f"[ERROR] Traceback:\n{traceback.format_exc()}")
+        raise
 
     # Get system prompt with phone number context
     system_prompt_text = get_system_prompt(phone_number=context.phone_number)
@@ -56,11 +63,15 @@ async def chat(
         ]
     )
 
-    response: BaseMessage = await (prompt | model_with_tools).ainvoke(  # type: ignore
-        input={"messages": state.messages}
-    )
-
-    return {"messages": [response]}
+    try:
+        response: BaseMessage = await (prompt | model_with_tools).ainvoke(  # type: ignore
+            input={"messages": state.messages}
+        )
+        return {"messages": [response]}
+    except Exception as e:
+        print(f"[ERROR] Error type: {type(e).__name__}")
+        print(f"[ERROR] Error message: {str(e)}")
+        raise
 
 
 async def should_continue(state: OverallState) -> Literal["tools"] | Literal["__end__"]:

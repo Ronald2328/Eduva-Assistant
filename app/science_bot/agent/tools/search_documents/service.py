@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 from app.core.config import settings
 from app.core.mongo_db import DocumentInfo, MongoDBService, PageMatch
@@ -38,17 +38,17 @@ class SearchDocumentsServiceResponse(BaseModel):
 class SearchDocumentsService:
     """Service for document search and answer generation."""
 
-    def __init__(self, database_name: str = "domus"):
+    def __init__(self):
         self.mongo_service = MongoDBService()
-        self.database_name = database_name
         self.llm = ChatOpenAI(
             model=settings.OPENAI_MODEL,
+            api_key=SecretStr(secret_value=settings.OPENAI_API_KEY),
             temperature=settings.OPENAI_TEMPERATURE,
         )
 
     async def __aenter__(self) -> SearchDocumentsService:
         """Context manager entry."""
-        await self.mongo_service.connect_db(self.database_name)
+        await self.mongo_service.connect_db()
         return self
 
     async def __aexit__(

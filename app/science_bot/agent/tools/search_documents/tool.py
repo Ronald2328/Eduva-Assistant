@@ -2,7 +2,7 @@ from enum import Enum
 
 from langchain_core.tools import tool  # type: ignore
 from langchain_core.tools.base import BaseTool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.science_bot.agent.tools.search_documents.service import (
     SearchDocumentsService,
@@ -48,15 +48,6 @@ class SchoolEnum(str, Enum):
     ARQUITECTURA = "Arquitectura y Urbanismo"
 
 
-class SearchDocumentsRequest(BaseModel):
-    query: str = Field(
-        description="The user's search question, written as a well-formulated query to find relevant information in the documents."
-    )
-    school: SchoolEnum = Field(
-        description="The specific school or faculty where the search should be performed. This field is mandatory."
-    )
-
-
 class SearchDocumentsResponse(BaseModel):
     success: bool
     message: str
@@ -64,10 +55,14 @@ class SearchDocumentsResponse(BaseModel):
 
 @tool
 async def search_documents(
-    request: SearchDocumentsRequest,
+    query: str,
+    school: SchoolEnum,
 ) -> SearchDocumentsResponse:
     """
     Searches for information in academic documents from the National University of Piura.
+
+    IMPORTANT: Only use this tool AFTER you have confirmed which school/faculty the user is asking about.
+    If the user hasn't specified their school, ask them first before calling this tool.
 
     This tool performs a complete processing pipeline:
     1. Retrieves relevant documents from the specified school and general information sources.
@@ -76,19 +71,32 @@ async def search_documents(
     4. Generates a comprehensive response based on the retrieved content.
 
     Args:
-        request: Request object containing the user's query and the target school.
+        query: The user's search question, written as a well-formulated query to find relevant information in the documents.
+        school: The specific school or faculty where the search should be performed. Must match one of the available schools in the SchoolEnum. This is REQUIRED — do not guess the school.
 
     Returns:
-        SearchDocumentsResponse containing the generated answer.
-    """
-    async with SearchDocumentsService() as service:
-        result: SearchDocumentsServiceResponse = await service.search_and_answer(
-            query=request.query, school=request.school.value
-        )
+        SearchDocumentsResponse containing the success status and the generated answer based on the documents.
 
+    Example usage:
+        - User: "How much is the tuition?"
+        - Assistant: "Which school/faculty are you in?"
+        - User: "Computer Engineering"
+        - Assistant: [calls search_documents with school=INFORMATICA and query about tuition cost]
+    """
+    try:
+        async with SearchDocumentsService() as service:
+            result: SearchDocumentsServiceResponse = await service.search_and_answer(
+                query=query, school=school.value
+            )
+
+            return SearchDocumentsResponse(
+                success=result.success,
+                message=result.message,
+            )
+    except Exception as e:
         return SearchDocumentsResponse(
-            success=result.success,
-            message=result.message,
+            success=False,
+            message=f"Error searching documents: {str(e)}",
         )
 
 

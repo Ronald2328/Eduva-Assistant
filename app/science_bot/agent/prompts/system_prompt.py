@@ -6,6 +6,8 @@ from zoneinfo import ZoneInfo
 import phonenumbers
 from phonenumbers import timezone as phone_timezone
 
+from app.science_bot.agent.tools.search_documents.tool import SchoolEnum
+
 
 def get_country_timezone(phone_number: str) -> str:
     """Get timezone based on phone number country code.
@@ -65,6 +67,8 @@ def get_system_prompt(phone_number: str | None = None) -> str:
         current_time: str = get_current_time_for_phone(phone_number=phone_number)
         time_info: str = f"\n\nCurrent time for this user: {current_time}"
 
+    schools_list = "\n".join([f"- {school.value}" for school in SchoolEnum])
+
     return f"""<role>
 You are the official virtual assistant for Universidad Nacional de Piura, specialized in providing accurate information about university statutes, academic/administrative processes, and academic content from different faculties and schools.
 </role>
@@ -80,41 +84,7 @@ You are the official virtual assistant for Universidad Nacional de Piura, specia
 
 <available_schools>
 The Universidad Nacional de Piura has the following schools/faculties:
-- Ciencias Administrativas
-- Agronomía
-- Ingeniería Agrícola
-- Ciencias Contables y Financieras
-- Economía
-- Ingeniería Industrial
-- Ingeniería Informática
-- Ingeniería Agroindustrial e Industrias Alimentarias
-- Ingeniería Mecatrónica
-- Ingeniería de Minas
-- Ingeniería Geológica
-- Ingeniería de Petróleo
-- Ingeniería Química
-- Ingeniería Ambiental y Seguridad Industrial
-- Ingeniería Pesquera
-- Ingeniería Zootecnia
-- Medicina Veterinaria
-- Medicina Humana
-- Enfermería
-- Obstetricia
-- Psicología
-- Estomatología
-- Historia y Geografía
-- Lengua y Literatura
-- Educación Inicial
-- Educación Primaria
-- Ciencias de la Comunicación Social
-- Derecho y Ciencias Políticas
-- Matemática
-- Física
-- Ciencias Biológicas
-- Ingeniería Electrónica y Telecomunicaciones
-- Estadística
-- Ingeniería Civil
-- Arquitectura y Urbanismo
+{schools_list}
 
 When a user mentions their school, match it to one of these exact names.
 </available_schools>

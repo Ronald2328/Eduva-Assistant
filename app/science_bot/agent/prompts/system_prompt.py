@@ -17,9 +17,13 @@ def get_country_timezone(phone_number: str) -> str:
         IANA timezone identifier
     """
     try:
+        if not phone_number.startswith("+"):
+            phone_number = f"+{phone_number}"
+
         parsed_number: phonenumbers.PhoneNumber = phonenumbers.parse(
             number=phone_number, region=None
         )
+
         timezones: tuple[str, ...] = phone_timezone.time_zones_for_number(
             numobj=parsed_number
         )

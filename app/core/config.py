@@ -35,8 +35,14 @@ class Settings(BaseSettings):
     # OpenAI Configuration
     OPENAI_API_KEY: str = Field(default="")
     OPENAI_MODEL: str = Field(default="gpt-4o-mini")
+    OPENAI_EMBEDDING_MODEL: str = Field(default="text-embedding-3-small")
     OPENAI_MAX_TOKENS: int = Field(default=1000)
     OPENAI_TEMPERATURE: float = Field(default=0)
+
+    # MongoDB Atlas Configuration
+    MONGO_URL: str = Field(default="mongodb://localhost:27017")
+    MONGO_DOCUMENTS_COLLECTION: str = Field(default="Documents")
+    MONGO_PAGES_COLLECTION: str = Field(default="ScienceBot")
 
     # Security
     LOGFIRE_TOKEN: str = Field(default="")

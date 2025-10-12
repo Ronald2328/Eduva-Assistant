@@ -3,7 +3,7 @@
 from langchain_core.messages.base import BaseMessage
 
 from app.science_bot.agent.graph import get_graph
-from app.science_bot.agent.schemas import Context, InputState
+from app.science_bot.agent.schemas import InputState
 from app.science_bot.core.conversation_manager import conversation_manager
 
 
@@ -35,9 +35,12 @@ async def process_message(user_id: str, message: str) -> str:
         # Invoke the graph with context
         response = await graph.ainvoke(  # type: ignore
             input=state,
-            context=Context(user_id=user_id),
             config={
                 "run_name": "process_webhook_message",
+                "configurable": {
+                    "user_id": user_id,
+                    "phone_number": user_id,
+                },
             },
         )
 

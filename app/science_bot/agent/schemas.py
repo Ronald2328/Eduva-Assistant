@@ -12,10 +12,14 @@ Messages = Annotated[list[BaseMessage], add_messages]
 @dataclass
 class Context:
     user_id: str | None = None
+    phone_number: str | None = None
 
     @classmethod
     def from_config(cls, config: RunnableConfig) -> "Context":
-        return cls(user_id=config.get("configurable", {}).get("user_id"))
+        return cls(
+            user_id=config.get("configurable", {}).get("user_id"),
+            phone_number=config.get("configurable", {}).get("phone_number"),
+        )
 
 
 @dataclass

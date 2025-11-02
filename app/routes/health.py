@@ -1,25 +1,17 @@
 """Health check route."""
 
 from fastapi import APIRouter
-
-from app.core.config import settings
+from pydantic import BaseModel
 
 router = APIRouter()
 
 
+class ReadyResponse(BaseModel):
+    status: str
+    ready: bool = True
+
+
 @router.get("/ready")
-async def readiness_check() -> dict[str, str | bool]:
+async def readiness_check() -> ReadyResponse:
     """Readiness check endpoint - verifica que el servicio esté listo."""
-    return {
-        "status": "ready",
-    }
-
-
-@router.get("/")
-async def root() -> dict[str, str | bool]:
-    """Root endpoint."""
-    return {
-        "message": f"¡{settings.BOT_NAME} está funcionando!",
-        "status": "active",
-        "ready": True,
-    }
+    return ReadyResponse(status="Service is ready", ready=True)

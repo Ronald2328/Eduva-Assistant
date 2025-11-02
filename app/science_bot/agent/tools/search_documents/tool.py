@@ -1,5 +1,6 @@
 from enum import Enum
 
+import logfire
 from langchain_core.tools import tool  # type: ignore
 from langchain_core.tools.base import BaseTool
 from pydantic import BaseModel
@@ -84,9 +85,18 @@ async def search_documents(
         - Assistant: [calls search_documents with school=INFORMATICA and query about tuition cost]
     """
     try:
+        logfire.info("Tool invoked", tool="search_documents", school=school.value, query_length=len(query))
+
         async with SearchDocumentsService() as service:
             result: SearchDocumentsServiceResponse = await service.search_and_answer(
                 query=query, school=school.value
+            )
+
+            logfire.info(
+                "Tool execution completed",
+                success=result.success,
+                document_used=result.document_used,
+                pages_count=result.pages_count,
             )
 
             return SearchDocumentsResponse(
@@ -94,6 +104,7 @@ async def search_documents(
                 message=result.message,
             )
     except Exception as e:
+        logfire.error("Tool execution failed", error=str(e), exc_info=e)
         return SearchDocumentsResponse(
             success=False,
             message=f"Error searching documents: {str(e)}",

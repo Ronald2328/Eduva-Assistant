@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logfire
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field, SecretStr
@@ -184,6 +185,7 @@ Return ONLY the exact document names, one per line, without explanations or numb
             pages_referenced=pages_referenced,
         )
 
+    @logfire.instrument("search_and_answer")
     async def search_and_answer(
         self, query: str, school: str, max_pages: int = 5
     ) -> SearchDocumentsServiceResponse:
@@ -208,64 +210,89 @@ Return ONLY the exact document names, one per line, without explanations or numb
         """
         try:
             # Step 1: Get relevant documents
-            documents = await self.get_relevant_documents(school)
+            with logfire.span("get_relevant_documents"):
+                documents = await self.get_relevant_documents(school)
+                logfire.info("Documents retrieved", school=school, document_count=len(documents))
 
-            if not documents:
-                return SearchDocumentsServiceResponse(
-                    success=False,
-                    message=f"No documents found for school: {school}",
-                )
+                if not documents:
+                    return SearchDocumentsServiceResponse(
+                        success=False,
+                        message=f"No documents found for school: {school}",
+                    )
 
             # Step 2: Select TOP 2 documents in a single LLM call (optimized)
-            selected_documents = await self.select_top_documents(
-                query, documents, top_k=2
-            )
-
-            if not selected_documents:
-                return SearchDocumentsServiceResponse(
-                    success=False,
-                    message="Could not select relevant documents for the query.",
+            with logfire.span("select_top_documents"):
+                selected_documents = await self.select_top_documents(
+                    query, documents, top_k=2
                 )
+                logfire.info(
+                    "Documents selected",
+                    selected_count=len(selected_documents),
+                    documents=selected_documents,
+                )
+
+                if not selected_documents:
+                    return SearchDocumentsServiceResponse(
+                        success=False,
+                        message="Could not select relevant documents for the query.",
+                    )
 
             # Step 3: Try up to 2 documents, keeping the best results
-            best_pages: list[PageMatch] = []
-            best_document: str | None = None
-            best_avg_score = 0.0
+            with logfire.span("search_in_documents"):
+                best_pages: list[PageMatch] = []
+                best_document: str | None = None
+                best_avg_score = 0.0
 
-            for doc_name in selected_documents[:2]:  # Max 2 attempts
-                pages = await self.search_in_document(query, doc_name, limit=max_pages)
+                for doc_name in selected_documents[:2]:  # Max 2 attempts
+                    pages = await self.search_in_document(query, doc_name, limit=max_pages)
 
-                if not pages:
-                    continue  # Try next document
+                    if not pages:
+                        logfire.warn("No pages found in document", document=doc_name)
+                        continue  # Try next document
 
-                # Calculate average relevance score
-                avg_score = sum(p.score for p in pages) / len(pages)
+                    # Calculate average relevance score
+                    avg_score = sum(p.score for p in pages) / len(pages)
+                    logfire.info(
+                        "Pages found in document",
+                        document=doc_name,
+                        page_count=len(pages),
+                        avg_score=round(avg_score, 4),
+                    )
 
-                # If we found excellent results (>= 0.75), use immediately
-                if avg_score >= 0.75:
-                    best_pages = pages
-                    best_document = doc_name
-                    best_avg_score = avg_score
-                    break  # No need to try second document
+                    # If we found excellent results (>= 0.75), use immediately
+                    if avg_score >= 0.75:
+                        best_pages = pages
+                        best_document = doc_name
+                        best_avg_score = avg_score
+                        logfire.info("Excellent results found, stopping search", avg_score=round(avg_score, 4))
+                        break  # No need to try second document
 
-                # Keep track of the best results so far
-                if avg_score > best_avg_score:
-                    best_pages = pages
-                    best_document = doc_name
-                    best_avg_score = avg_score
+                    # Keep track of the best results so far
+                    if avg_score > best_avg_score:
+                        best_pages = pages
+                        best_document = doc_name
+                        best_avg_score = avg_score
 
-            # Check if we found any valid results
-            if not best_pages or best_document is None:
-                return SearchDocumentsServiceResponse(
-                    success=False,
-                    message=f"No relevant information found in available documents for: {school}",
-                    document_used=selected_documents[0] if selected_documents else None,
-                )
+                # Check if we found any valid results
+                if not best_pages or best_document is None:
+                    logfire.warn("No relevant pages found in any document")
+                    return SearchDocumentsServiceResponse(
+                        success=False,
+                        message=f"No relevant information found in available documents for: {school}",
+                        document_used=selected_documents[0] if selected_documents else None,
+                    )
 
             # Step 4: Generate final answer with the best pages found
-            answer_response = await self.generate_answer(
-                query, best_document, best_pages
-            )
+            with logfire.span("generate_answer"):
+                answer_response = await self.generate_answer(
+                    query, best_document, best_pages
+                )
+                logfire.info(
+                    "Answer generated successfully",
+                    document=best_document,
+                    pages_used=len(best_pages),
+                    final_score=round(best_avg_score, 4),
+                )
 
             return SearchDocumentsServiceResponse(
                 success=True,
@@ -275,6 +302,7 @@ Return ONLY the exact document names, one per line, without explanations or numb
             )
 
         except Exception as e:
+            logfire.error("Search and answer pipeline failed", error=str(e), exc_info=e)
             return SearchDocumentsServiceResponse(
                 success=False, message=f"Search error: {str(e)}"
             )

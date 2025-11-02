@@ -30,6 +30,14 @@ if settings.ENVIRONMENT == Environment.DEV:
         )
 
 
+@app.get(path="/ready")
+async def readiness_check():
+    """Readiness check endpoint."""
+    return {
+        "status": "ok",
+    }
+
+
 if settings.LOGFIRE_TOKEN:
     logfire.configure(
         service_name=settings.APP_NAME,

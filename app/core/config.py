@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     MONGO_PAGES_COLLECTION: str = Field(default="ScienceBot")
 
     # Security
-    LOGFIRE_TOKEN: str = Field(default="")
+    LOGFIRE_TOKEN: str | None = Field(default=None)
 
     model_config = {
         "env_file": ".env",

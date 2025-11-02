@@ -62,3 +62,6 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-root = ""
+
+[tool.logfire]
+ignore_no_config = true

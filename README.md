@@ -45,7 +45,7 @@ uv run ruff check app/
 uv run ruff format app/
 
 # Langgraph
-uv run langgraph dev --allow-blocking
+uv run langgraph dev
 ```
 
 ## 📝 Licencia

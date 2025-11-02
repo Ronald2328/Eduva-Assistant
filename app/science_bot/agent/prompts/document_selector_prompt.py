@@ -43,12 +43,3 @@ you should respond exactly:
 Syllabi 2025
 </example_behavior>
 """
-
-
-DOCUMENT_SELECTOR_USER_PROMPT_TEMPLATE = """PREGUNTA DEL USUARIO:
-{query}
-
-AVAILABLE DOCUMENTS:
-{documents_list}
-
-Select the most relevant document and answer ONLY with its exact name."""

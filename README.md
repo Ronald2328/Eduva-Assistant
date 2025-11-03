@@ -1,7 +1,3 @@
-# ScienceBot WhatsApp API
-
-Bot de WhatsApp integrado con Evolution API para respuestas automáticas.
-
 ## 🚀 Inicio Rápido
 
 ### 1. Instalar uv
@@ -16,36 +12,14 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 ```
 
-### 3. Configurar variables de entorno
-
-```bash
-cp .env.example .env
-```
-
-### 4. Iniciar servidor
+### 3. Iniciar servidor
 
 ```bash
 # Desarrollo
-uv run fastapi dev
+uv run langgraph dev
 
 # Producción
 uv run fastapi run
-```
-
-## 🧪 Desarrollo
-
-```bash
-# Type checking
-uv run mypy app/
-
-# Linting
-uv run ruff check app/
-
-# Format
-uv run ruff format app/
-
-# Langgraph
-uv run langgraph dev
 ```
 
 ## 📝 Licencia

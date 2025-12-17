@@ -15,21 +15,23 @@ class WebhookResponse(BaseModel):
     message: str | None = None
 
 
-@router.post(path="/webhook/messages-upsert")
-async def receive_message(request: Request) -> WebhookResponse:
-    """Receive and process incoming webhook messages from Evolution API."""
+@router.post(path="/webhook/{event_path:path}")
+async def receive_webhook(request: Request) -> WebhookResponse:
+    """Receive and process all incoming webhooks from Evolution API."""
     try:
         body = await request.json()
 
         # Validate and parse the webhook payload structure
         webhook_payload: WebhookPayload = WebhookPayload.model_validate(obj=body)
-        print("Received webhook payload:", webhook_payload)
+
+        # Only process messages.upsert events (incoming messages)
+        if webhook_payload.event not in ["messages.upsert", "MESSAGES_UPSERT"]:
+            return WebhookResponse(status="success", message=f"Event {webhook_payload.event} ignored")
 
         # Parse the incoming webhook message
         parsed_message: ParsedMessage | None = evolution_service.parse_webhook_message(
             webhook_payload=webhook_payload
         )
-        print("Parsed message:", parsed_message)
 
         if parsed_message:
             # Mark the incoming message as read
@@ -38,7 +40,6 @@ async def receive_message(request: Request) -> WebhookResponse:
                 instance_name=webhook_payload.instance,
                 message_id=parsed_message.message_id,
             )
-            print("Marked message as read:", parsed_message.message_id)
 
             # Show "typing" presence before processing
             await evolution_service.send_presence(
@@ -46,14 +47,12 @@ async def receive_message(request: Request) -> WebhookResponse:
                 instance_name=webhook_payload.instance,
                 state="composing",
             )
-            print("Sent typing presence for:", parsed_message.phone_number)
 
             # Process the message with the science bot
             ai_response = await process_message(
                 user_id=parsed_message.phone_number,
                 message=parsed_message.text,
             )
-            print("AI response generated:", ai_response)
 
             # Send the AI-generated response back via Evolution API
             await evolution_service.send_message(
@@ -61,7 +60,6 @@ async def receive_message(request: Request) -> WebhookResponse:
                 message=ai_response,
                 instance_name=webhook_payload.instance,
             )
-            print("Sent AI response to:", parsed_message.phone_number)
 
         return WebhookResponse(status="success")
 

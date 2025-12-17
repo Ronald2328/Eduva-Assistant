@@ -3,41 +3,77 @@
 from pydantic import BaseModel, Field
 
 
+class TimestampInfo(BaseModel):
+    """Timestamp information."""
+
+    low: int = Field(..., description="Low timestamp value")
+    high: int = Field(..., description="High timestamp value")
+    unsigned: bool = Field(..., description="Unsigned flag")
+
+
+class KeyHash(BaseModel):
+    """Key hash as dictionary with numeric keys."""
+
+    class Config:
+        extra = "allow"
+
+
 class MessageKey(BaseModel):
     """Message key information."""
 
     remoteJid: str = Field(..., description="Remote JID (phone number)")
+    remoteJidAlt: str | None = Field(default=None, description="Alternative remote JID")
     fromMe: bool = Field(default=False, description="Whether message is from us")
     id: str = Field(..., description="Message ID")
+    participant: str | None = Field(default=None, description="Participant JID")
+    addressingMode: str | None = Field(default=None, description="Addressing mode")
 
 
 class DeviceListMetadata(BaseModel):
     """Device list metadata."""
 
-    senderKeyHash: str | None = Field(default=None, description="Sender key hash")
-    senderTimestamp: str | None = Field(default=None, description="Sender timestamp")
-    senderAccountType: str | None = Field(
+    senderKeyIndexes: list[int] | None = Field(default=None, description="Sender key indexes")
+    recipientKeyIndexes: list[int] | None = Field(default=None, description="Recipient key indexes")
+    senderKeyHash: KeyHash | None = Field(default=None, description="Sender key hash")
+    senderTimestamp: TimestampInfo | None = Field(default=None, description="Sender timestamp")
+    senderAccountType: int | None = Field(
         default=None, description="Sender account type"
     )
-    receiverAccountType: str | None = Field(
+    receiverAccountType: int | None = Field(
         default=None, description="Receiver account type"
     )
-    recipientKeyHash: str | None = Field(default=None, description="Recipient key hash")
-    recipientTimestamp: str | None = Field(
+    recipientKeyHash: KeyHash | None = Field(default=None, description="Recipient key hash")
+    recipientTimestamp: TimestampInfo | None = Field(
         default=None, description="Recipient timestamp"
     )
+
+
+class MessageSecret(BaseModel):
+    """Message secret as dictionary with numeric keys."""
+
+    class Config:
+        extra = "allow"
+
+
+class LimitSharingV2(BaseModel):
+    """Limit sharing V2 information."""
+
+    trigger: int | None = Field(default=None, description="Trigger value")
+    initiatedByMe: bool | None = Field(default=None, description="Initiated by me flag")
 
 
 class MessageContextInfo(BaseModel):
     """Message context information."""
 
+    threadId: list[str] | None = Field(default=None, description="Thread ID")
     deviceListMetadata: DeviceListMetadata | None = Field(
         default=None, description="Device list metadata"
     )
     deviceListMetadataVersion: int | None = Field(
         default=None, description="Device list metadata version"
     )
-    messageSecret: str | None = Field(default=None, description="Message secret")
+    messageSecret: MessageSecret | None = Field(default=None, description="Message secret")
+    limitSharingV2: LimitSharingV2 | None = Field(default=None, description="Limit sharing V2")
 
 
 class ExtendedTextMessage(BaseModel):
@@ -78,10 +114,11 @@ class MessageData(BaseModel):
     """Message data from webhook."""
 
     key: MessageKey | None = Field(default=None, description="Message key")
-    message: MessageContent | None = Field(default=None, description="Message content")
-    messageTimestamp: int | None = Field(default=None, description="Message timestamp")
     pushName: str | None = Field(default=None, description="Contact name")
+    status: str | None = Field(default=None, description="Message status")
+    message: MessageContent | None = Field(default=None, description="Message content")
     messageType: str | None = Field(default=None, description="Message type")
+    messageTimestamp: int | None = Field(default=None, description="Message timestamp")
     instanceId: str | None = Field(default=None, description="Instance ID")
     source: str | None = Field(default=None, description="Message source")
     contextInfo: dict[str, object] | None = Field(

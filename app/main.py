@@ -1,4 +1,3 @@
-import logfire
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from scalar_fastapi import get_scalar_api_reference  # type: ignore
@@ -36,15 +35,3 @@ async def readiness_check():
     return {
         "status": "ok",
     }
-
-
-if settings.LOGFIRE_TOKEN:
-    logfire.configure(
-        service_name=settings.APP_NAME,
-        environment=settings.ENVIRONMENT.value,
-        token=settings.LOGFIRE_TOKEN,
-    )
-
-    logfire.instrument_fastapi(app)
-    logfire.instrument_httpx()
-    logfire.instrument_openai()

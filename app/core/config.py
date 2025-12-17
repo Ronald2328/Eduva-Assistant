@@ -11,7 +11,7 @@ class Environment(StrEnum):
 
 
 class Settings(BaseSettings):
-    APP_NAME: str = Field(default="ScienceBot WhatsApp API")
+    APP_NAME: str = Field(default="AgroBot WhatsApp API")
     APP_VERSION: str = Field(default="1.0.0")
     ENVIRONMENT: Environment = Field(default=Environment.DEV)
 
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     )
 
     # Bot Configuration
-    BOT_NAME: str = Field(default="ScienceBot")
+    BOT_NAME: str = Field(default="AgroBot")
 
     # OpenAI Configuration
     OPENAI_API_KEY: str = Field(default="")
@@ -38,15 +38,6 @@ class Settings(BaseSettings):
     OPENAI_EMBEDDING_MODEL: str = Field(default="text-embedding-3-small")
     OPENAI_MAX_TOKENS: int = Field(default=1000)
     OPENAI_TEMPERATURE: float = Field(default=0)
-
-    # MongoDB Atlas Configuration
-    MONGO_URL: str = Field(default="mongodb://localhost:27017")
-    MONGO_DATABASE: str = Field(default="ScienceBot")
-    MONGO_DOCUMENTS_COLLECTION: str = Field(default="Documents")
-    MONGO_PAGES_COLLECTION: str = Field(default="ScienceBot")
-
-    # Security
-    LOGFIRE_TOKEN: str | None = Field(default=None)
 
     model_config = {
         "env_file": ".env",

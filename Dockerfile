@@ -22,6 +22,7 @@ COPY . .
 # Install the project itself
 RUN uv sync --frozen --no-dev
 
+ENV PATH="/app/.venv/bin:$PATH"
 ENV PORT=8000
 
-CMD uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT
+CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT

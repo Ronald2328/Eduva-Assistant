@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import logfire
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
@@ -6,6 +8,8 @@ from scalar_fastapi import get_scalar_api_reference  # type: ignore
 from app.core.config import Environment, settings
 from app.lifespan import lifespan
 from app.router import router as api_router
+
+BASE_DIR = Path(__file__).resolve().parent
 
 app = FastAPI(
     lifespan=lifespan,
@@ -21,7 +25,7 @@ app.include_router(router=api_router)
 @app.get("/admin/upload", response_class=HTMLResponse, include_in_schema=False)
 async def admin_upload_ui():
     """Serve admin document upload UI."""
-    with open("app/static/upload.html") as f:
+    with open(BASE_DIR / "static" / "upload.html") as f:
         return f.read()
 
 if settings.ENVIRONMENT == Environment.DEV:

@@ -17,6 +17,13 @@ app = FastAPI(
 
 app.include_router(router=api_router)
 
+# Serve admin UI
+@app.get("/admin/upload", response_class=HTMLResponse, include_in_schema=False)
+async def admin_upload_ui():
+    """Serve admin document upload UI."""
+    with open("app/static/upload.html") as f:
+        return f.read()
+
 if settings.ENVIRONMENT == Environment.DEV:
 
     @app.get(path="/docs", include_in_schema=False)
@@ -39,12 +46,17 @@ async def readiness_check():
 
 
 if settings.LOGFIRE_TOKEN:
-    logfire.configure(
-        service_name=settings.APP_NAME,
-        environment=settings.ENVIRONMENT.value,
-        token=settings.LOGFIRE_TOKEN,
-    )
+    try:
+        logfire.configure(
+            service_name=settings.APP_NAME,
+            environment=settings.ENVIRONMENT.value,
+            token=settings.LOGFIRE_TOKEN,
+        )
 
-    logfire.instrument_fastapi(app)
-    logfire.instrument_httpx()
-    logfire.instrument_openai()
+        logfire.instrument_fastapi(app)
+        logfire.instrument_openai()
+
+    except Exception as e:
+        print(f"\nLogfire error: {e}\nContinuing without monitoring...\n")
+else:
+    print("\nLogfire not configured (add token to .env if you want monitoring)\n")

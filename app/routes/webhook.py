@@ -2,7 +2,7 @@
 
 import logfire
 from fastapi import APIRouter, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.models.webhook import ParsedMessage, WebhookPayload
 from app.science_bot.core.service import process_message
@@ -16,18 +16,23 @@ class WebhookResponse(BaseModel):
     message: str | None = None
 
 
-@router.post(path="/webhook")
+@router.post("/webhook/{event}")
 @logfire.instrument("receive_webhook_message")
-async def receive_message(request: Request) -> WebhookResponse:
+async def receive_message(event: str, request: Request) -> WebhookResponse:
     """Receive and process incoming webhook messages from Evolution API."""
     try:
         body = await request.json()
-        logfire.info("Webhook received", payload_size=len(str(body)))
+        logfire.info("Webhook received", event=event, payload_size=len(str(body)))
 
         # Validate and parse the webhook payload structure
         with logfire.span("validate_webhook_payload"):
-            webhook_payload: WebhookPayload = WebhookPayload.model_validate(obj=body)
-            logfire.info("Webhook payload validated", instance=webhook_payload.instance)
+            try:
+                webhook_payload: WebhookPayload = WebhookPayload.model_validate(obj=body)
+                logfire.info("Webhook payload validated", instance=webhook_payload.instance)
+            except ValidationError as e:
+                error_details = e.errors()
+                logfire.error("Webhook validation error", errors=error_details)
+                raise
 
         # Parse the incoming webhook message
         with logfire.span("parse_webhook_message"):
@@ -64,6 +69,9 @@ async def receive_message(request: Request) -> WebhookResponse:
                 ai_response = await process_message(
                     user_id=parsed_message.phone_number,
                     message=parsed_message.text,
+                    phone_number=parsed_message.phone_number,
+                    user_name=parsed_message.push_name,
+                    message_id=parsed_message.message_id,
                 )
                 logfire.info("AI response generated", response_length=len(ai_response))
 

@@ -66,10 +66,8 @@ async def search_documents(
     If the user hasn't specified their school, ask them first before calling this tool.
 
     This tool performs a complete processing pipeline:
-    1. Retrieves relevant documents from the specified school and general information sources.
-    2. Selects the most appropriate document using AI.
-    3. Searches for the most relevant pages within that document.
-    4. Generates a comprehensive response based on the retrieved content.
+    1. Searches for the most relevant document chunks from the specified school and general information.
+    2. Generates a comprehensive response based on the retrieved content.
 
     Args:
         query: The user's search question, written as a well-formulated query to find relevant information in the documents.
@@ -96,7 +94,7 @@ async def search_documents(
                 "Tool execution completed",
                 success=result.success,
                 document_used=result.document_used,
-                pages_count=result.pages_count,
+                chunks_count=result.chunks_count,
             )
 
             return SearchDocumentsResponse(

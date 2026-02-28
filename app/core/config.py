@@ -36,17 +36,38 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = Field(default="")
     OPENAI_MODEL: str = Field(default="gpt-4o-mini")
     OPENAI_EMBEDDING_MODEL: str = Field(default="text-embedding-3-small")
+    OPENAI_EMBEDDING_DIMENSIONS: int = Field(default=1536)
     OPENAI_MAX_TOKENS: int = Field(default=1000)
     OPENAI_TEMPERATURE: float = Field(default=0)
 
-    # MongoDB Atlas Configuration
-    MONGO_URL: str = Field(default="mongodb://localhost:27017")
-    MONGO_DATABASE: str = Field(default="ScienceBot")
-    MONGO_DOCUMENTS_COLLECTION: str = Field(default="Documents")
-    MONGO_PAGES_COLLECTION: str = Field(default="ScienceBot")
+    # LlamaCloud OCR Configuration
+    LLAMA_CLOUD_API_KEY: str = Field(default="")
 
-    # Security
-    LOGFIRE_TOKEN: str | None = Field(default=None)
+    # Document Chunking Configuration
+    CHUNK_SIZE_TOKENS: int = Field(default=1000)
+    CHUNK_OVERLAP_TOKENS: int = Field(default=100)
+
+    # PostgreSQL Configuration (NEW)
+    DATABASE_URL: str = Field(
+        default="postgresql+asyncpg://postgres:password@localhost:5432/sciencebot"
+    )
+
+    # Conversation Configuration
+    CONVERSATION_CONTEXT_WINDOW: int = Field(default=15, description="Number of recent messages to include in context")
+
+    # Admin Configuration (Document Management)
+    ADMIN_USERNAME: str = Field(default="admin", description="Admin username for document management")
+    ADMIN_PASSWORD: str = Field(default="admin", description="Admin password for document management")
+
+    # Logfire Configuration (Observability)
+    LOGFIRE_TOKEN: str | None = Field(
+        default=None,
+        description="Logfire token from https://logfire.pydantic.dev/ - leave empty to disable logging"
+    )
+    LOGFIRE_URL: str = Field(
+        default="https://logfire.pydantic.dev",
+        description="Logfire API endpoint (change if using self-hosted)"
+    )
 
     model_config = {
         "env_file": ".env",

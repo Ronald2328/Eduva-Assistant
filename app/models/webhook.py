@@ -1,35 +1,52 @@
 """Webhook data models for Evolution API."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MessageKey(BaseModel):
     """Message key information."""
 
+    model_config = ConfigDict(extra="allow")
+
     remoteJid: str = Field(..., description="Remote JID (phone number)")
     fromMe: bool = Field(default=False, description="Whether message is from us")
     id: str = Field(..., description="Message ID")
+    remoteJidAlt: str | None = Field(default=None, description="Remote JID alternative")
+    participant: str | None = Field(default=None, description="Participant")
+    addressingMode: str | None = Field(default=None, description="Addressing mode")
 
 
 class DeviceListMetadata(BaseModel):
     """Device list metadata."""
 
-    senderKeyHash: str | None = Field(default=None, description="Sender key hash")
-    senderTimestamp: str | None = Field(default=None, description="Sender timestamp")
-    senderAccountType: str | None = Field(
+    model_config = ConfigDict(extra="allow")
+
+    senderKeyHash: dict[str, object] | str | None = Field(
+        default=None, description="Sender key hash"
+    )
+    senderTimestamp: dict[str, object] | int | None = Field(
+        default=None, description="Sender timestamp"
+    )
+    senderAccountType: int | str | None = Field(
         default=None, description="Sender account type"
     )
-    receiverAccountType: str | None = Field(
+    receiverAccountType: int | str | None = Field(
         default=None, description="Receiver account type"
     )
-    recipientKeyHash: str | None = Field(default=None, description="Recipient key hash")
-    recipientTimestamp: str | None = Field(
+    recipientKeyHash: dict[str, object] | str | None = Field(
+        default=None, description="Recipient key hash"
+    )
+    recipientTimestamp: dict[str, object] | int | None = Field(
         default=None, description="Recipient timestamp"
     )
+    senderKeyIndexes: list[object] | None = Field(default=None, description="Sender key indexes")
+    recipientKeyIndexes: list[object] | None = Field(default=None, description="Recipient key indexes")
 
 
 class MessageContextInfo(BaseModel):
     """Message context information."""
+
+    model_config = ConfigDict(extra="allow")
 
     deviceListMetadata: DeviceListMetadata | None = Field(
         default=None, description="Device list metadata"
@@ -38,6 +55,10 @@ class MessageContextInfo(BaseModel):
         default=None, description="Device list metadata version"
     )
     messageSecret: str | None = Field(default=None, description="Message secret")
+    threadId: list[object] | None = Field(default=None, description="Thread ID")
+    limitSharingV2: dict[str, object] | None = Field(
+        default=None, description="Limit sharing v2"
+    )
 
 
 class ExtendedTextMessage(BaseModel):
@@ -49,13 +70,15 @@ class ExtendedTextMessage(BaseModel):
 class MessageContent(BaseModel):
     """Message content."""
 
+    model_config = ConfigDict(extra="allow")
+
     conversation: str | None = Field(
         default=None, description="Simple conversation text"
     )
     extendedTextMessage: ExtendedTextMessage | None = Field(
         default=None, description="Extended text message"
     )
-    messageContextInfo: MessageContextInfo | None = Field(
+    messageContextInfo: MessageContextInfo | dict[str, object] | None = Field(
         default=None, description="Message context information"
     )
 
@@ -77,6 +100,8 @@ class MessageUpdateData(BaseModel):
 class MessageData(BaseModel):
     """Message data from webhook."""
 
+    model_config = ConfigDict(extra="allow")
+
     key: MessageKey | None = Field(default=None, description="Message key")
     message: MessageContent | None = Field(default=None, description="Message content")
     messageTimestamp: int | None = Field(default=None, description="Message timestamp")
@@ -87,16 +112,19 @@ class MessageData(BaseModel):
     contextInfo: dict[str, object] | None = Field(
         default=None, description="Context info"
     )
+    status: str | None = Field(default=None, description="Message status")
 
 
 class WebhookPayload(BaseModel):
     """Webhook payload from Evolution API."""
 
+    model_config = ConfigDict(extra="allow")
+
     event: str = Field(..., description="Event type")
     instance: str = Field(..., description="Instance name")
-    data: (
-        MessageData | MessageUpdateData | list[MessageData] | list[MessageUpdateData]
-    ) = Field(..., description="Message data or update data")
+    data: MessageData | MessageUpdateData | list[MessageData | MessageUpdateData] = Field(
+        ..., description="Message data or update data"
+    )
     destination: str | None = Field(default=None, description="Webhook destination URL")
     date_time: str | None = Field(default=None, description="Event date and time")
     sender: str | None = Field(default=None, description="Sender JID")

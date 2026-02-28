@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Documentos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            color: #000;
+            min-height: 100vh;
+        }
+
+        .login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #ffffff;
+        }
+
+        .login-box {
+            width: 100%;
+            max-width: 380px;
+            padding: 2rem;
+        }
+
+        .login-box h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .login-box p {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #000;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        textarea,
+        select {
+            padding: 0.75rem;
+            border: 1px solid #000;
+            border-radius: 0;
+            font-size: 0.9rem;
+            font-family: inherit;
+            background: #ffffff;
+            color: #000;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border: 2px solid #000;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        button {
+            background: #000;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover { background: #333; }
+        button:active { background: #000; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+
+        .alert {
+            padding: 0.75rem 1rem;
+            margin: 1rem 0;
+            display: none;
+            border-left: 3px solid;
+            font-size: 0.85rem;
+        }
+
+        .alert.success {
+            background: #f0f0f0;
+            border-left-color: #000;
+            color: #000;
+            display: block;
+        }
+
+        .alert.error {
+            background: #fff0f0;
+            border-left-color: #c00;
+            color: #c00;
+            display: block;
+        }
+
+        .app-screen {
+            display: none;
+            min-height: 100vh;
+            background: #ffffff;
+        }
+
+        .app-header {
+            background: #000;
+            color: white;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .app-header h1 { font-size: 1.5rem; font-weight: 700; }
+
+        .logout-btn {
+            background: white;
+            color: #000;
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+        }
+
+        .logout-btn:hover { background: #f0f0f0; }
+
+        .app-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .documents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .document-card {
+            border: 1px solid #000;
+            padding: 1.5rem;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        .document-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+
+        .document-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .document-meta {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .btn-delete {
+            background: #000;
+            color: white;
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            flex: 1;
+        }
+
+        .btn-delete:hover { background: #333; }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #666;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal.active { display: flex; }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h2 { font-size: 1.3rem; font-weight: 700; }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            color: #000;
+        }
+
+        .modal-close:hover { opacity: 0.6; }
+
+        .modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .file-drop {
+            border: 2px dashed #000;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .file-drop:hover { background: #f5f5f5; }
+        .file-drop.has-file { border-style: solid; background: #f5f5f5; }
+        .file-drop input[type="file"] { display: none; }
+        .file-drop .label { font-size: 0.9rem; color: #666; }
+        .file-drop.has-file .label { color: #000; font-weight: 600; }
+
+        .progress-box {
+            display: none;
+            margin: 1rem 0;
+        }
+
+        .progress-box.active { display: block; }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e0e0e0;
+            overflow: hidden;
+        }
+
+        .progress-bar-inner {
+            width: 30%;
+            height: 100%;
+            background: #000;
+            animation: slide 1.5s ease-in-out infinite;
+        }
+
+        @keyframes slide {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(400%); }
+        }
+
+        .progress-text {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .app-container { padding: 1rem; }
+            .documents-grid { grid-template-columns: 1fr; }
+            .modal-content { width: 95%; padding: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-screen" id="loginScreen">
+        <div class="login-box">
+            <h1>Admin</h1>
+            <p>Gesti&oacute;n de Documentos</p>
+            <div id="loginMessage" class="alert"></div>
+            <form class="login-form" id="loginForm">
+                <div class="form-group">
+                    <label for="loginUsername">Usuario</label>
+                    <input type="text" id="loginUsername" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Contrase&ntilde;a</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit">Ingresar</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="app-screen" id="appScreen">
+        <div class="app-header">
+            <h1>Documentos</h1>
+            <button class="logout-btn" id="logoutBtn">Salir</button>
+        </div>
+        <div class="app-container">
+            <div class="toolbar">
+                <button class="btn-primary" id="uploadBtn">+ Subir Documento</button>
+            </div>
+            <div id="documentsList" class="documents-grid">
+                <div class="empty-state"><p>Cargando documentos...</p></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="uploadModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nuevo Documento</h2>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div id="uploadMessage" class="alert"></div>
+            <div class="progress-box" id="progressBox">
+                <div class="progress-bar"><div class="progress-bar-inner"></div></div>
+                <div class="progress-text" id="progressText">Procesando PDF con OCR...</div>
+            </div>
+            <form class="modal-form" id="uploadForm">
+                <div class="form-group">
+                    <label>Archivo PDF</label>
+                    <div class="file-drop" id="fileDrop">
+                        <input type="file" id="pdfFile" accept="application/pdf" required>
+                        <span class="label" id="fileLabel">Clic para seleccionar un PDF</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="docName">Nombre del Documento</label>
+                    <input type="text" id="docName" placeholder="ej: Reglamento Acad&eacute;mico 2024" required>
+                </div>
+                <div class="form-group">
+                    <label for="school">Escuela / Facultad</label>
+                    <select id="school" required>
+                        <option value="">-- Selecciona --</option>
+                        <option value="Informaci&oacute;n General">Informaci&oacute;n General</option>
+                        <option value="Ciencias Administrativas">Ciencias Administrativas</option>
+                        <option value="Agronom&iacute;a">Agronom&iacute;a</option>
+                        <option value="Ingenier&iacute;a Agr&iacute;cola">Ingenier&iacute;a Agr&iacute;cola</option>
+                        <option value="Ciencias Contables y Financieras">Ciencias Contables y Financieras</option>
+                        <option value="Econom&iacute;a">Econom&iacute;a</option>
+                        <option value="Ingenier&iacute;a Industrial">Ingenier&iacute;a Industrial</option>
+                        <option value="Ingenier&iacute;a Inform&aacute;tica">Ingenier&iacute;a Inform&aacute;tica</option>
+                        <option value="Ingenier&iacute;a Agroindustrial e Industrias Alimentarias">Ingenier&iacute;a Agroindustrial</option>
+                        <option value="Ingenier&iacute;a Mecatr&oacute;nica">Ingenier&iacute;a Mecatr&oacute;nica</option>
+                        <option value="Ingenier&iacute;a de Minas">Ingenier&iacute;a de Minas</option>
+                        <option value="Ingenier&iacute;a Geol&oacute;gica">Ingenier&iacute;a Geol&oacute;gica</option>
+                        <option value="Ingenier&iacute;a de Petr&oacute;leo">Ingenier&iacute;a de Petr&oacute;leo</option>
+                        <option value="Ingenier&iacute;a Qu&iacute;mica">Ingenier&iacute;a Qu&iacute;mica</option>
+                        <option value="Ingenier&iacute;a Ambiental y Seguridad Industrial">Ingenier&iacute;a Ambiental</option>
+                        <option value="Ingenier&iacute;a Pesquera">Ingenier&iacute;a Pesquera</option>
+                        <option value="Ingenier&iacute;a Zootecnia">Ingenier&iacute;a Zootecnia</option>
+                        <option value="Medicina Veterinaria">Medicina Veterinaria</option>
+                        <option value="Medicina Humana">Medicina Humana</option>
+                        <option value="Enfermer&iacute;a">Enfermer&iacute;a</option>
+                        <option value="Obstetricia">Obstetricia</option>
+                        <option value="Psicolog&iacute;a">Psicolog&iacute;a</option>
+                        <option value="Estomatolog&iacute;a">Estomatolog&iacute;a</option>
+                        <option value="Historia y Geograf&iacute;a">Historia y Geograf&iacute;a</option>
+                        <option value="Lengua y Literatura">Lengua y Literatura</option>
+                        <option value="Educaci&oacute;n Inicial">Educaci&oacute;n Inicial</option>
+                        <option value="Educaci&oacute;n Primaria">Educaci&oacute;n Primaria</option>
+                        <option value="Ciencias de la Comunicaci&oacute;n Social">Ciencias de la Comunicaci&oacute;n</option>
+                        <option value="Derecho y Ciencias Pol&iacute;ticas">Derecho y Ciencias Pol&iacute;ticas</option>
+                        <option value="Matem&aacute;tica">Matem&aacute;tica</option>
+                        <option value="F&iacute;sica">F&iacute;sica</option>
+                        <option value="Ciencias Biol&oacute;gicas">Ciencias Biol&oacute;gicas</option>
+                        <option value="Ingenier&iacute;a Electr&oacute;nica y Telecomunicaciones">Ingenier&iacute;a Electr&oacute;nica</option>
+                        <option value="Estad&iacute;stica">Estad&iacute;stica</option>
+                        <option value="Ingenier&iacute;a Civil">Ingenier&iacute;a Civil</option>
+                        <option value="Arquitectura y Urbanismo">Arquitectura y Urbanismo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="description">Descripci&oacute;n (Opcional)</label>
+                    <textarea id="description" placeholder="Descripci&oacute;n breve del documento..."></textarea>
+                </div>
+                <button type="submit" id="submitBtn">Subir y Procesar</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        var credentials = null;
+
+        var fileDrop = document.getElementById('fileDrop');
+        var pdfFile = document.getElementById('pdfFile');
+        var fileLabel = document.getElementById('fileLabel');
+
+        fileDrop.addEventListener('click', function() { pdfFile.click(); });
+        pdfFile.addEventListener('change', function() {
+            if (pdfFile.files.length > 0) {
+                var f = pdfFile.files[0];
+                fileLabel.textContent = f.name + ' (' + (f.size / 1024 / 1024).toFixed(1) + ' MB)';
+                fileDrop.classList.add('has-file');
+            } else {
+                fileLabel.textContent = 'Clic para seleccionar un PDF';
+                fileDrop.classList.remove('has-file');
+            }
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var u = document.getElementById('loginUsername').value;
+            var p = document.getElementById('loginPassword').value;
+            if (!u || !p) { showAlert('loginMessage', 'Ingresa usuario y contrase\u00f1a', 'error'); return; }
+            credentials = btoa(u + ':' + p);
+            try {
+                var r = await fetch('/admin/documents', { headers: { 'Authorization': 'Basic ' + credentials } });
+                if (!r.ok) throw new Error('fail');
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('appScreen').style.display = 'block';
+                await loadDocuments();
+            } catch (err) {
+                showAlert('loginMessage', 'Credenciales inv\u00e1lidas', 'error');
+                credentials = null;
+            }
+        });
+
+        document.getElementById('uploadBtn').addEventListener('click', function() {
+            document.getElementById('uploadModal').classList.add('active');
+        });
+        document.getElementById('closeModal').addEventListener('click', function() {
+            document.getElementById('uploadModal').classList.remove('active');
+        });
+        document.getElementById('uploadModal').addEventListener('click', function(e) {
+            if (e.target.id === 'uploadModal') e.target.classList.remove('active');
+        });
+
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var file = pdfFile.files[0];
+            if (!file) { showAlert('uploadMessage', 'Selecciona un archivo PDF', 'error'); return; }
+
+            var fd = new FormData();
+            fd.append('pdf_file', file);
+            fd.append('document_name', document.getElementById('docName').value);
+            fd.append('school', document.getElementById('school').value);
+            fd.append('description', document.getElementById('description').value || '');
+
+            var btn = document.getElementById('submitBtn');
+            var prog = document.getElementById('progressBox');
+            btn.disabled = true;
+            btn.textContent = 'Procesando...';
+            prog.classList.add('active');
+            document.getElementById('progressText').textContent = 'Subiendo PDF y procesando con OCR...';
+
+            try {
+                var r = await fetch('/admin/documents/upload', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Basic ' + credentials },
+                    body: fd
+                });
+                var result = await r.json();
+                if (r.ok) {
+                    showAlert('uploadMessage', result.message + ' (' + result.processing_time_seconds + 's)', 'success');
+                    document.getElementById('uploadForm').reset();
+                    fileLabel.textContent = 'Clic para seleccionar un PDF';
+                    fileDrop.classList.remove('has-file');
+                    document.getElementById('uploadModal').classList.remove('active');
+                    await loadDocuments();
+                } else {
+                    showAlert('uploadMessage', result.detail || 'Error al procesar', 'error');
+                }
+            } catch (err) {
+                showAlert('uploadMessage', err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Subir y Procesar';
+                prog.classList.remove('active');
+            }
+        });
+
+        async function loadDocuments() {
+            try {
+                var r = await fetch('/admin/documents', { headers: { 'Authorization': 'Basic ' + credentials } });
+                if (!r.ok) throw new Error('fail');
+                var result = await r.json();
+                var docs = result.documents || [];
+                var el = document.getElementById('documentsList');
+                if (docs.length === 0) { el.innerHTML = '<div class="empty-state"><p>No hay documentos a\u00fan</p></div>'; return; }
+                el.innerHTML = docs.map(function(doc) {
+                    return '<div class="document-card">' +
+                        '<div class="document-name">' + esc(doc.nombre) + '</div>' +
+                        '<div class="document-meta">' +
+                            '<div>' + esc(doc.school) + '</div>' +
+                            '<div>' + doc.chunks_count + ' chunks &bull; ' + new Date(doc.created_at).toLocaleDateString('es-ES') + '</div>' +
+                        '</div>' +
+                        '<div class="document-actions">' +
+                            '<button class="btn-delete" onclick="deleteDoc(\'' + doc.id + '\')">Eliminar</button>' +
+                        '</div>' +
+                    '</div>';
+                }).join('');
+            } catch (err) {
+                document.getElementById('documentsList').innerHTML = '<div class="empty-state"><p>Error al cargar</p></div>';
+            }
+        }
+
+        async function deleteDoc(id) {
+            if (!confirm('\u00bfEliminar este documento?')) return;
+            try {
+                var r = await fetch('/admin/documents/' + id, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Basic ' + credentials }
+                });
+                if (r.ok) { await loadDocuments(); }
+                else { var res = await r.json(); showAlert('uploadMessage', res.detail || 'Error', 'error'); }
+            } catch (err) { showAlert('uploadMessage', err.message, 'error'); }
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            credentials = null;
+            document.getElementById('appScreen').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('loginForm').reset();
+            document.getElementById('uploadModal').classList.remove('active');
+        });
+
+        function showAlert(id, msg, type) {
+            var el = document.getElementById(id);
+            el.textContent = msg;
+            el.className = 'alert ' + type;
+            setTimeout(function() { el.className = 'alert'; }, 6000);
+        }
+
+        function esc(t) {
+            var m = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'};
+            return t.replace(/[&<>"']/g, function(c) { return m[c]; });
+        }
+    </script>
+</body>
+</html>

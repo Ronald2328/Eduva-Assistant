@@ -57,7 +57,7 @@ async def chat(
     # Bind tools to model
     with logfire.span("bind_tools"):
         try:
-            model_with_tools = model.bind_tools(tools=TOOLS, strict=True)  # type: ignore
+            model_with_tools = model.bind_tools(tools=TOOLS)  # type: ignore
             logfire.info("Tools bound successfully", tool_count=len(TOOLS))
         except Exception as e:
             logfire.error(

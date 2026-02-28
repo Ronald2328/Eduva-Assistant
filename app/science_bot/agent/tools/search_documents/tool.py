@@ -57,37 +57,46 @@ class SearchDocumentsResponse(BaseModel):
 @tool
 async def search_documents(
     query: str,
-    school: SchoolEnum,
+    school: SchoolEnum | None = None,
 ) -> SearchDocumentsResponse:
     """
     Searches for information in academic documents from the National University of Piura.
 
-    IMPORTANT: Only use this tool AFTER you have confirmed which school/faculty the user is asking about.
-    If the user hasn't specified their school, ask them first before calling this tool.
+    This tool intelligently searches your documents and generates comprehensive answers:
+    - If the user mentions their school/faculty, include it in the search for more targeted results
+    - If no school is mentioned, the tool searches general information ("Información General") automatically
+    - The tool combines results from the specific school + general information for complete answers
 
-    This tool performs a complete processing pipeline:
-    1. Searches for the most relevant document chunks from the specified school and general information.
-    2. Generates a comprehensive response based on the retrieved content.
+    Pipeline:
+    1. Embeds the query and performs vector similarity search
+    2. Retrieves the most relevant document chunks (filtered by school if provided, or general info only)
+    3. Generates a comprehensive answer based on the retrieved content
 
     Args:
-        query: The user's search question, written as a well-formulated query to find relevant information in the documents.
-        school: The specific school or faculty where the search should be performed. Must match one of the available schools in the SchoolEnum. This is REQUIRED — do not guess the school.
+        query: The user's search question, written as a clear, specific query that will help find relevant information.
+               Example: "What are the admission requirements?" or "What is the tuition cost?"
+        school: (Optional) The user's school or faculty. If provided, search results will include content from both
+                that school AND general information. If not provided, only general information will be searched.
+                Examples: INFORMATICA, MEDICINA, INGENIERIA_INDUSTRIAL, etc.
 
     Returns:
-        SearchDocumentsResponse containing the success status and the generated answer based on the documents.
+        SearchDocumentsResponse containing the success status and the AI-generated answer based on documents.
 
-    Example usage:
-        - User: "How much is the tuition?"
-        - Assistant: "Which school/faculty are you in?"
-        - User: "Computer Engineering"
-        - Assistant: [calls search_documents with school=INFORMATICA and query about tuition cost]
+    Smart behavior examples:
+        - User: "What documents do I need to enroll?"
+          → Tool: Uses "Información General" (no school specified) to find enrollment requirements
+        - User: "I'm in Engineering and need to know about specializations"
+          → Tool: If school is known from context, searches Engineering + General; if not, searches General only
+        - User: "How do I register for classes?"
+          → Tool: Searches general information since this applies to all schools
     """
     try:
-        logfire.info("Tool invoked", tool="search_documents", school=school.value, query_length=len(query))
+        school_name = school.value if school else "Información General"
+        logfire.info("Tool invoked", tool="search_documents", school=school_name, query_length=len(query))
 
         async with SearchDocumentsService() as service:
             result: SearchDocumentsServiceResponse = await service.search_and_answer(
-                query=query, school=school.value
+                query=query, school=school_name
             )
 
             logfire.info(

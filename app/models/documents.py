@@ -66,7 +66,7 @@ class ChunkMatch(BaseModel):
     similarity_score: float
     source_page: int | None = None
     section_title: str | None = None
-    metadata: dict | None = None
+    metadata: dict[str, str | int | float] | None = None
 
 
 class ChunksSearchResponse(BaseModel):

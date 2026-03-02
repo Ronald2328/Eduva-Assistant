@@ -1,5 +1,3 @@
-## 🚀 Inicio Rápido
-
 ### 1. Instalar uv
 
 ```bash
@@ -21,7 +19,3 @@ uv run langgraph dev
 # Producción
 uv run fastapi run
 ```
-
-## 📝 Licencia
-
-MIT

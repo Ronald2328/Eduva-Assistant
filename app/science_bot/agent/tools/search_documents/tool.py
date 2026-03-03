@@ -62,10 +62,10 @@ async def search_documents(
     """
     Searches for information in academic documents from the National University of Piura.
 
-    This tool intelligently searches your documents and generates comprehensive answers:
-    - If the user mentions their school/faculty, include it in the search for more targeted results
-    - If no school is mentioned, the tool searches general information ("Información General") automatically
-    - The tool combines results from the specific school + general information for complete answers
+    SMART SEARCH STRATEGY:
+    1. ALWAYS try general search first (no school specified) for any query
+    2. ONLY use school parameter if user explicitly mentions their school or if general search returns no relevant results
+    3. If user's question is clearly school-specific (curriculum, degree requirements), then search with school
 
     Pipeline:
     1. Embeds the query and performs vector similarity search
@@ -74,21 +74,21 @@ async def search_documents(
 
     Args:
         query: The user's search question, written as a clear, specific query that will help find relevant information.
-               Example: "What are the admission requirements?" or "What is the tuition cost?"
+               Example: "What is the cost to validate a course?" or "How much does it cost to graduate?"
         school: (Optional) The user's school or faculty. If provided, search results will include content from both
-                that school AND general information. If not provided, only general information will be searched.
-                Examples: INFORMATICA, MEDICINA, INGENIERIA_INDUSTRIAL, etc.
+                that school AND general information. If not provided, searches general information ("Información General").
+                Use only when: 1) user mentions their school, 2) question is school-specific, 3) general search had no results
 
     Returns:
         SearchDocumentsResponse containing the success status and the AI-generated answer based on documents.
 
     Smart behavior examples:
-        - User: "What documents do I need to enroll?"
-          → Tool: Uses "Información General" (no school specified) to find enrollment requirements
-        - User: "I'm in Engineering and need to know about specializations"
-          → Tool: If school is known from context, searches Engineering + General; if not, searches General only
-        - User: "How do I register for classes?"
-          → Tool: Searches general information since this applies to all schools
+        - User: "How much does it cost to validate a course?"
+          → Tool: Search WITHOUT school first → return general cost info → done (don't ask for school)
+        - User: "What courses are in the 4th semester?"
+          → Tool: Search WITHOUT school → no specific result → ask user for school → search with school
+        - User: "I'm in Computer Science, what are my graduation requirements?"
+          → Tool: Search WITH school (INFORMATICA) → return specific requirements
     """
     try:
         school_name = school.value if school else "Información General"

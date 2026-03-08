@@ -64,31 +64,39 @@ async def search_documents(
 
     SMART SEARCH STRATEGY:
     1. ALWAYS try general search first (no school specified) for any query
-    2. ONLY use school parameter if user explicitly mentions their school or if general search returns no relevant results
-    3. If user's question is clearly school-specific (curriculum, degree requirements), then search with school
+    2. ONLY use school parameter if:
+       - User explicitly mentions their school (ONE TIME: remember it for rest of conversation)
+       - General search returns no relevant results
+       - Question is clearly school-specific (curriculum, degree requirements)
+    3. MAINTAIN SCHOOL CONTEXT: Once user mentions school, use it for all subsequent queries unless they explicitly change it
+    4. DO NOT RE-ASK: Never ask for school twice in conversation
+    5. ANSWER CONCISELY: No unnecessary extensions or offers of additional details
 
     Pipeline:
-    1. Embeds the query and performs vector similarity search
-    2. Retrieves the most relevant document chunks (filtered by school if provided, or general info only)
-    3. Generates a comprehensive answer based on the retrieved content
+    1. Vector similarity search on chunks
+    2. Retrieves top-8 most relevant document chunks (filtered by school if in context, or general info only)
+    3. Generates answer based on retrieved content - INCLUDES ALL relevant information from documents
+       - No preambles or padding, but COMPLETE information (all requirements, all conditions, all steps)
 
     Args:
-        query: The user's search question, written as a clear, specific query that will help find relevant information.
+        query: The user's search question, clear and specific.
                Example: "What is the cost to validate a course?" or "How much does it cost to graduate?"
-        school: (Optional) The user's school or faculty. If provided, search results will include content from both
-                that school AND general information. If not provided, searches general information ("Información General").
-                Use only when: 1) user mentions their school, 2) question is school-specific, 3) general search had no results
+        school: (Optional) The user's school or faculty FROM CONVERSATION CONTEXT.
+                Use when: 1) user mentioned school (remember it), 2) question is school-specific, 3) first search had no results
+                Searches results include content from that school AND general information.
 
     Returns:
-        SearchDocumentsResponse containing the success status and the AI-generated answer based on documents.
+        SearchDocumentsResponse containing success status and concise AI-generated answer (no padding).
 
-    Smart behavior examples:
+    Behavior examples:
         - User: "How much does it cost to validate a course?"
-          → Tool: Search WITHOUT school first → return general cost info → done (don't ask for school)
-        - User: "What courses are in the 4th semester?"
-          → Tool: Search WITHOUT school → no specific result → ask user for school → search with school
-        - User: "I'm in Computer Science, what are my graduation requirements?"
-          → Tool: Search WITH school (INFORMATICA) → return specific requirements
+          → Search WITHOUT school → return cost only → DONE
+        - User: "What courses are in 4th semester?" → "I'm in Computer Science"
+          → First search general → no match → ask "Which school?" (once) → store INFORMATICA → search with it
+        - Next message: "What about 5th semester?"
+          → Use INFORMATICA from context → search with school → answer
+        - User: "Actually I switched to Engineering"
+          → Update school to INDUSTRIAL → search with new school
     """
     try:
         school_name = school.value if school else "Información General"

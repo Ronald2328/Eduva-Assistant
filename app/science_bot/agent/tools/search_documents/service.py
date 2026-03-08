@@ -95,7 +95,7 @@ class SearchDocumentsService:
 
     @logfire.instrument("search_and_answer")
     async def search_and_answer(
-        self, query: str, school: str, max_chunks: int = 5
+        self, query: str, school: str, max_chunks: int = 8
     ) -> SearchDocumentsServiceResponse:
         """Complete pipeline: direct chunk search → answer generation.
 
@@ -106,7 +106,7 @@ class SearchDocumentsService:
         Args:
             query: User question
             school: School to search in
-            max_chunks: Maximum number of chunks to retrieve (default: 5)
+            max_chunks: Maximum number of chunks to retrieve (default: 8)
 
         Returns:
             Final service response

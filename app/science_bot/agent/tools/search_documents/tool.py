@@ -81,9 +81,10 @@ async def search_documents(
       4. Remember school for all future queries
 
     Pipeline:
-    1. Vector similarity search on chunks
-    2. Retrieves top-8 most relevant document chunks (filtered by school if in context, or general info only)
-    3. Generates answer based on retrieved content - INCLUDES ALL relevant information from documents
+    1. Query optimization for better semantic search
+    2. Vector similarity search on chunks
+    3. Retrieves top-15 most relevant document chunks (filtered by school if in context, or general info only)
+    4. Generates answer based on retrieved content - INCLUDES ALL relevant information from documents
        - No preambles or padding, but COMPLETE information (all requirements, all conditions, all steps)
 
     Args:

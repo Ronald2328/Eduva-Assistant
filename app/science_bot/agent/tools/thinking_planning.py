@@ -19,7 +19,8 @@ class ThinkingPlanningSchema(BaseModel):
       → If YES: Plan to ask user for school immediately
 
     Examples of ambiguity to detect:
-    - "código del curso" → Academic code (MA3536) or payment code?
+    - "código" → Academic code (MA3536 for a course) or payment code (for bank transaction)?
+    - "código del curso" → Which course? Which school?
     - "requisitos para graduarme" → Egresante, Egresado, Bachiller, or Titulado?
     - "costos de trámites" → Which specific process?
     - "información sobre mi carrera" → Which school? What specific info?

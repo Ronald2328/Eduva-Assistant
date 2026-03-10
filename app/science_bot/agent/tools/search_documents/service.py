@@ -56,6 +56,50 @@ class SearchDocumentsService:
         """Context manager exit."""
         await self.db_service.close_connection()
 
+    async def optimize_query_for_search(self, query: str) -> str:
+        """Optimize user query for better semantic search.
+
+        Reformulates the query to be more effective for embedding-based search
+        by expanding keywords and making it more semantically rich.
+
+        Args:
+            query: Original user question
+
+        Returns:
+            Optimized query for semantic search
+        """
+        optimization_prompt = f"""Given this user question, reformulate it to be optimal for semantic/embedding search in academic documents.
+
+Original question: "{query}"
+
+Rules:
+- Expand abbreviations and informal terms to formal academic language
+- Add relevant synonyms and related terms
+- Keep it concise (max 15 words)
+- Focus on key concepts and keywords
+- Remove filler words (cuanto, como, que, etc.)
+- Use formal Spanish academic terminology
+
+Examples:
+- "cuanto cuesta la matricula?" → "costo matrícula pago derechos universidad ingresante"
+- "codigo de matematica basica" → "código académico curso matemática básica plan estudios"
+- "requisitos para graduarme" → "requisitos documentos graduación egresado bachiller título"
+- "como hago el traslado" → "procedimiento proceso trámite traslado interno externo"
+
+Optimized query:"""
+
+        messages = [HumanMessage(content=optimization_prompt)]
+        response = await self.llm.ainvoke(messages)
+        optimized = str(response.content).strip()  # type: ignore
+
+        logfire.info(
+            "Query optimized for search",
+            original_query=query,
+            optimized_query=optimized,
+        )
+
+        return optimized
+
     async def generate_answer(
         self, query: str, chunks: list[ChunkMatch]
     ) -> str:
@@ -95,28 +139,33 @@ class SearchDocumentsService:
 
     @logfire.instrument("search_and_answer")
     async def search_and_answer(
-        self, query: str, school: str, max_chunks: int = 8, min_score: float = 0.5
+        self, query: str, school: str, max_chunks: int = 15, min_score: float = 0.5
     ) -> SearchDocumentsServiceResponse:
-        """Complete pipeline: direct chunk search → answer generation.
+        """Complete pipeline: query optimization → chunk search → answer generation.
 
-        1. Vector search chunks filtered by school + "Información General"
-        2. If good results found, generate answer
-        3. Return response
+        1. Optimize query for better semantic search
+        2. Vector search chunks filtered by school + "Información General"
+        3. If good results found, generate answer
+        4. Return response
 
         Args:
             query: User question
             school: School to search in
-            max_chunks: Maximum number of chunks to retrieve (default: 8)
+            max_chunks: Maximum number of chunks to retrieve (default: 15)
             min_score: Minimum similarity score to consider (default: 0.5)
 
         Returns:
             Final service response
         """
         try:
-            # Step 1: Direct vector search on chunks
+            # Step 0: Optimize query for semantic search
+            with logfire.span("optimize_query"):
+                optimized_query = await self.optimize_query_for_search(query)
+
+            # Step 1: Vector search on chunks with optimized query
             with logfire.span("search_chunks"):
                 result = await self.db_service.search_chunks_by_school(
-                    query=query,
+                    query=optimized_query,  # Use optimized query for search
                     school=school,
                     limit=max_chunks,
                 )

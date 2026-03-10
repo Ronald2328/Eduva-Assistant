@@ -9,6 +9,7 @@ from app.science_bot.agent.tools.search_documents.service import (
     SearchDocumentsService,
     SearchDocumentsServiceResponse,
 )
+from app.science_bot.agent.tools.thinking_planning import THINKING_TOOL
 
 
 class SchoolEnum(str, Enum):
@@ -126,4 +127,4 @@ async def search_documents(
         )
 
 
-TOOLS: list[BaseTool] = [search_documents]
+TOOLS: list[BaseTool] = [THINKING_TOOL, search_documents]

@@ -67,11 +67,18 @@ async def search_documents(
     1. ALWAYS try general search first (no school specified) for any query
     2. ONLY use school parameter if:
        - User explicitly mentions their school (ONE TIME: remember it for rest of conversation)
-       - General search returns no relevant results
+       - Tool response says "need to ask the user which school" → ASK USER FOR SCHOOL
        - Question is clearly school-specific (curriculum, degree requirements)
     3. MAINTAIN SCHOOL CONTEXT: Once user mentions school, use it for all subsequent queries unless they explicitly change it
     4. DO NOT RE-ASK: Never ask for school twice in conversation
     5. ANSWER CONCISELY: No unnecessary extensions or offers of additional details
+
+    CRITICAL FLOW WHEN INFORMATION NOT FOUND:
+    - If search result message contains "need to ask the user which school" → This means:
+      1. Information exists but requires school context
+      2. You MUST ask user: "¿De qué escuela eres?" (in user's language)
+      3. Once user provides school, search again WITH school parameter
+      4. Remember school for all future queries
 
     Pipeline:
     1. Vector similarity search on chunks
@@ -83,19 +90,21 @@ async def search_documents(
         query: The user's search question, clear and specific.
                Example: "What is the cost to validate a course?" or "How much does it cost to graduate?"
         school: (Optional) The user's school or faculty FROM CONVERSATION CONTEXT.
-                Use when: 1) user mentioned school (remember it), 2) question is school-specific, 3) first search had no results
+                Use when: 1) user mentioned school (remember it), 2) tool said to ask for school, 3) question is school-specific
                 Searches results include content from that school AND general information.
 
     Returns:
-        SearchDocumentsResponse containing success status and concise AI-generated answer (no padding).
+        SearchDocumentsResponse containing success status and AI-generated answer.
+        IMPORTANT: If message contains "need to ask the user which school" → ASK USER FOR SCHOOL
 
     Behavior examples:
         - User: "How much does it cost to validate a course?"
           → Search WITHOUT school → return cost only → DONE
-        - User: "What courses are in 4th semester?" → "I'm in Computer Science"
-          → First search general → no match → ask "Which school?" (once) → store INFORMATICA → search with it
+        - User: "What is the academic code for basic mathematics?"
+          → Search WITHOUT school → tool says "need to ask user which school" → ask "¿De qué escuela eres?"
+          → User: "Matemática" → Search WITH school=MATEMATICA → return code
         - Next message: "What about 5th semester?"
-          → Use INFORMATICA from context → search with school → answer
+          → Use MATEMATICA from context → search with school → answer
         - User: "Actually I switched to Engineering"
           → Update school to INDUSTRIAL → search with new school
     """

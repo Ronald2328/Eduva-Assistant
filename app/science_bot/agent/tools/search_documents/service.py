@@ -95,7 +95,7 @@ class SearchDocumentsService:
 
     @logfire.instrument("search_and_answer")
     async def search_and_answer(
-        self, query: str, school: str, max_chunks: int = 8
+        self, query: str, school: str, max_chunks: int = 8, min_score: float = 0.5
     ) -> SearchDocumentsServiceResponse:
         """Complete pipeline: direct chunk search → answer generation.
 
@@ -107,6 +107,7 @@ class SearchDocumentsService:
             query: User question
             school: School to search in
             max_chunks: Maximum number of chunks to retrieve (default: 8)
+            min_score: Minimum similarity score to consider (default: 0.5)
 
         Returns:
             Final service response
@@ -120,36 +121,65 @@ class SearchDocumentsService:
                     limit=max_chunks,
                 )
 
+                # Filter by minimum score
+                relevant_matches = [m for m in result.matches if m.score >= min_score]
+
                 logfire.info(
                     "Chunks retrieved",
                     school=school,
                     chunks_found=len(result.matches),
+                    relevant_chunks=len(relevant_matches),
+                    min_score=min_score,
                 )
 
-                if not result.matches:
+                if not relevant_matches:
+                    # Special message when searching in general info without school context
+                    if school == "Información General":
+                        return SearchDocumentsServiceResponse(
+                            success=False,
+                            message="No information found in general documents. This information may be available in school-specific documents. You need to ask the user which school they belong to in order to search more specifically.",
+                        )
                     return SearchDocumentsServiceResponse(
                         success=False,
                         message=f"No relevant information found for school: {school}",
                     )
 
-            # Step 2: Generate answer from chunks
+            # Step 2: Generate answer from relevant chunks only
             with logfire.span("generate_answer"):
-                avg_score = sum(m.score for m in result.matches) / len(result.matches)
+                avg_score = sum(m.score for m in relevant_matches) / len(relevant_matches)
                 logfire.info(
                     "Generating answer",
-                    chunks_count=len(result.matches),
+                    chunks_count=len(relevant_matches),
                     avg_score=round(avg_score, 4),
                 )
 
-                answer = await self.generate_answer(query, result.matches)
+                answer = await self.generate_answer(query, relevant_matches)
+
+                # Check if answer generator couldn't find the information in chunks
+                if answer.strip() == "INSUFFICIENT_CONTEXT":
+                    logfire.info(
+                        "Answer generator could not find information in chunks",
+                        school=school,
+                        chunks_used=len(relevant_matches),
+                    )
+                    # Treat as if no relevant information found
+                    if school == "Información General":
+                        return SearchDocumentsServiceResponse(
+                            success=False,
+                            message="No information found in general documents. This information may be available in school-specific documents. You need to ask the user which school they belong to in order to search more specifically.",
+                        )
+                    return SearchDocumentsServiceResponse(
+                        success=False,
+                        message=f"No relevant information found for school: {school}",
+                    )
 
                 # Get primary document used
-                document_used = result.matches[0].document_name
+                document_used = relevant_matches[0].document_name
 
                 logfire.info(
                     "Answer generated successfully",
                     document=document_used,
-                    chunks_used=len(result.matches),
+                    chunks_used=len(relevant_matches),
                     avg_score=round(avg_score, 4),
                 )
 
@@ -157,7 +187,7 @@ class SearchDocumentsService:
                 success=True,
                 message=answer,
                 document_used=document_used,
-                chunks_count=len(result.matches),
+                chunks_count=len(relevant_matches),
             )
 
         except Exception as e:

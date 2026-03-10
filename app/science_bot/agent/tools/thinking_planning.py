@@ -15,12 +15,19 @@ class ThinkingPlanningSchema(BaseModel):
     - Which tool should I call next (search_documents)?
     - Should I ask for clarification before searching?
     - Are there multiple possible interpretations?
+    - CRITICAL: Did search_documents return a message saying "need to ask the user which school"?
+      → If YES: Plan to ask user for school immediately
 
     Examples of ambiguity to detect:
     - "código del curso" → Academic code (MA3536) or payment code?
     - "requisitos para graduarme" → Egresante, Egresado, Bachiller, or Titulado?
     - "costos de trámites" → Which specific process?
     - "información sobre mi carrera" → Which school? What specific info?
+
+    DETECTING WHEN TO ASK FOR SCHOOL:
+    - After calling search_documents, if the result message contains "need to ask the user which school"
+      → This is a CLEAR SIGNAL to ask: "¿De qué escuela eres?" (in user's language)
+    - Remember: search WITHOUT school first, only ask for school when tool explicitly indicates it
     """
 
     question_analysis: str = Field(
@@ -35,8 +42,9 @@ class ThinkingPlanningSchema(BaseModel):
             "Planned next steps in order. "
             "Examples: "
             "['Ask user for school', 'Search documents with school parameter'] OR "
-            "['Search general documents first', 'If not found, ask for school'] OR "
-            "['Ask clarification about type of code', 'Then search with specific query']"
+            "['Search general documents first', 'If tool says need school, ask user for school'] OR "
+            "['Ask clarification about type of code', 'Then search with specific query'] OR "
+            "AFTER tool result: ['Tool said need school context', 'Ask: ¿De qué escuela eres?', 'Search again with school']"
         )
     )
 
@@ -64,12 +72,20 @@ async def thinking_planning_tool(
     - Detect when clarification is needed BEFORE searching documents
     - Plan which tools to call and in what order
     - Decide on search strategy (general vs school-specific)
+    - CRITICAL: Detect when search_documents says "need to ask user which school" → ASK FOR SCHOOL
 
     Critical use cases:
     - User asks about "código" → Is it academic code or payment code?
     - User asks about "requisitos" → Requirements for what specifically?
     - User asks about "costos" → Cost of which process?
     - User mentions their school → Remember it for future queries
+    - search_documents result says "need to ask user which school" → Ask: "¿De qué escuela eres?"
+
+    WORKFLOW AFTER search_documents FAILURE:
+    1. Read the tool result message carefully
+    2. If message contains "need to ask the user which school" → Plan to ask user for school
+    3. Ask user directly: "¿De qué escuela eres?" (no preambles, no options)
+    4. Once user provides school, search again with school parameter
 
     Returns:
         Confirmation that planning is complete

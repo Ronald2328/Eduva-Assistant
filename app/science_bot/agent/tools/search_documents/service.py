@@ -101,17 +101,28 @@ Optimized query:"""
         return optimized
 
     async def generate_answer(
-        self, query: str, chunks: list[ChunkMatch]
+        self, query: str, chunks: list[ChunkMatch], max_chunks_for_context: int = 10
     ) -> str:
         """Generate final answer using AI from chunk context.
 
         Args:
             query: User question
             chunks: Relevant chunks found
+            max_chunks_for_context: Maximum chunks to include in LLM context (default: 10)
 
         Returns:
             Generated answer text
         """
+        # SAFETY: Limit chunks to prevent token overflow
+        if len(chunks) > max_chunks_for_context:
+            logfire.warn(
+                "Truncating chunks for answer generation",
+                total_chunks=len(chunks),
+                max_chunks=max_chunks_for_context,
+                truncated=len(chunks) - max_chunks_for_context,
+            )
+            chunks = chunks[:max_chunks_for_context]
+
         # Build context from chunks
         chunks_content = "\n\n---\n\n".join(
             [
@@ -139,7 +150,7 @@ Optimized query:"""
 
     @logfire.instrument("search_and_answer")
     async def search_and_answer(
-        self, query: str, school: str, max_chunks: int = 15, min_score: float = 0.5
+        self, query: str, school: str, max_chunks: int = 10, min_score: float = 0.5
     ) -> SearchDocumentsServiceResponse:
         """Complete pipeline: query optimization → chunk search → answer generation.
 
@@ -151,7 +162,7 @@ Optimized query:"""
         Args:
             query: User question
             school: School to search in
-            max_chunks: Maximum number of chunks to retrieve (default: 15)
+            max_chunks: Maximum number of chunks to retrieve (default: 10, reduced to prevent token overflow)
             min_score: Minimum similarity score to consider (default: 0.5)
 
         Returns:

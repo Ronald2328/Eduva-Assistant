@@ -150,8 +150,8 @@ class EmbeddingsService:
         self,
         model: str = settings.OPENAI_EMBEDDING_MODEL,
         dimensions: int = settings.OPENAI_EMBEDDING_DIMENSIONS,
-        batch_size: int = 100,
-        max_concurrent_batches: int = 5,
+        batch_size: int = 10,  # Reduced from 100 to avoid token limits
+        max_concurrent_batches: int = 3,  # Reduced from 5 for better rate limit control
     ):
         self.model = model
         self.dimensions = dimensions

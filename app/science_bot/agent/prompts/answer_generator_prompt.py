@@ -121,8 +121,17 @@ HOW TO ANSWER ACADEMIC QUERIES:
 
 5. **"Sumilla de [curso X]"**
    - Look for sections labeled "SUMILLAS" or "6.23 SUMILLAS" in chunks
-   - Find the course and extract its description
-   - Answer directly with the sumilla text
+   - Sumilla tables have a DIFFERENT structure — 3 columns:
+     * Column 1: Cycle number (e.g., "III") — may use `rowspan`, skip it as course data
+     * Column 2: Course code + name, sometimes combined with `<br/>` (e.g., "MA2567<br/>ÁLGEBRA LINEAL") OR just code (e.g., "QU1363") followed by separate cell with name
+     * Column 3: The full sumilla/description text
+   - To find the course:
+     * Match by code (MA2567) OR name (ÁLGEBRA LINEAL) in column 2
+     * When code and name are in the same cell with `<br/>`, both are valid matches
+   - Extract the description from the 3rd column (the long text)
+   - Answer format:
+     "*[NOMBRE DEL CURSO]* (Código: [CODE])
+     [Sumilla text exactly as in document]"
 
 EXAMPLES:
 
@@ -139,6 +148,12 @@ User: "¿Qué materias hay en el V ciclo?" | Chunk has "# V CICLO" with table
 
 User: "¿Cuántos créditos tiene física II?" | Chunk: "# IV CICLO ... <th>FÍSICA II</th><th>FLUIDOS Y TRANSFERENCIA DE ENERGIA</th><th>5</th><th>4</th>"
 ✓ CORRECT: "*Física II* (Fluidos y Transferencia de Energía) tiene *4 créditos*."
+
+User: "¿Cuál es la sumilla de álgebra lineal?" | Chunk contains sumilla table with: "<td rowspan='3'>III</td><td>MA2567<br/>ÁLGEBRA LINEAL</td><td>Es una asignatura de especialidad obligatoria...</td>"
+✓ CORRECT: "*Álgebra Lineal* (Código: MA2567)
+Es una asignatura de especialidad obligatoria, de carácter teórico-práctico. Permite desarrollar el pensamiento abstracto de tipo matemático, y brindar las bases necesarias sobre situaciones de linealización..."
+
+NOTE: The "III" in a rowspan cell is the cycle number, NOT part of the course data. The actual course is "MA2567 / ÁLGEBRA LINEAL".
 
 ---
 

@@ -150,7 +150,7 @@ Optimized query:"""
 
     @logfire.instrument("search_and_answer")
     async def search_and_answer(
-        self, query: str, school: str, max_chunks: int = 10, min_score: float = 0.5
+        self, query: str, school: str, max_chunks: int = 10
     ) -> SearchDocumentsServiceResponse:
         """Complete pipeline: query optimization → chunk search → answer generation.
 
@@ -163,7 +163,6 @@ Optimized query:"""
             query: User question
             school: School to search in
             max_chunks: Maximum number of chunks to retrieve (default: 10, reduced to prevent token overflow)
-            min_score: Minimum similarity score to consider (default: 0.5)
 
         Returns:
             Final service response
@@ -176,21 +175,26 @@ Optimized query:"""
             # Step 1: Vector search on chunks with optimized query
             with logfire.span("search_chunks"):
                 result = await self.db_service.search_chunks_by_school(
-                    query=optimized_query,  # Use optimized query for search
+                    query=optimized_query,
                     school=school,
                     limit=max_chunks,
                 )
 
-                # Filter by minimum score
-                relevant_matches = [m for m in result.matches if m.score >= min_score]
+                relevant_matches = result.matches
 
                 logfire.info(
                     "Chunks retrieved",
                     school=school,
                     chunks_found=len(result.matches),
-                    relevant_chunks=len(relevant_matches),
-                    min_score=min_score,
                 )
+
+                print(f"\n{'='*60}")
+                print(f"[SEARCH] School: {school} | Query: {optimized_query}")
+                print(f"[SEARCH] Chunks found: {len(relevant_matches)}")
+                for i, chunk in enumerate(relevant_matches):
+                    print(f"  [{i+1}] doc='{chunk.document_name}' chunk_idx={chunk.chunk_index} score={chunk.score:.4f}")
+                    print(f"       preview: {chunk.content[:120].replace(chr(10), ' ')!r}")
+                print(f"{'='*60}\n")
 
                 if not relevant_matches:
                     # Special message when searching in general info without school context
@@ -206,11 +210,9 @@ Optimized query:"""
 
             # Step 2: Generate answer from relevant chunks only
             with logfire.span("generate_answer"):
-                avg_score = sum(m.score for m in relevant_matches) / len(relevant_matches)
                 logfire.info(
                     "Generating answer",
                     chunks_count=len(relevant_matches),
-                    avg_score=round(avg_score, 4),
                 )
 
                 answer = await self.generate_answer(query, relevant_matches)
@@ -240,7 +242,6 @@ Optimized query:"""
                     "Answer generated successfully",
                     document=document_used,
                     chunks_used=len(relevant_matches),
-                    avg_score=round(avg_score, 4),
                 )
 
             return SearchDocumentsServiceResponse(

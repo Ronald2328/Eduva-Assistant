@@ -9,18 +9,28 @@ class ThinkingPlanningSchema(BaseModel):
     CRITICAL: Use this tool to analyze the user's question BEFORE responding.
     This prevents ambiguous responses and ensures proper clarification when needed.
 
+    STEP 0 - CLASSIFY QUERY TYPE:
+    - ACADEMIC CONTENT: Questions about courses, cycles, credits, academic codes, study plan, curriculum
+      → Always search directly. NEVER ask about costs. NEVER apply trámite segmentation.
+      → Examples: "ciclo del álgebra lineal", "créditos de física II", "código del curso de estadística"
+    - ADMINISTRATIVE: Questions about procedures, enrollment, graduation, transfers, validation
+      → Apply segmentation and ambiguity detection.
+      → Examples: "costo de matrícula", "requisitos para graduarme", "proceso de convalidación"
+
+    CRITICAL: ALWAYS SEARCH, NEVER ASSUME FROM HISTORY
+    - Even if a similar question was answered before, ALWAYS call search_documents again
+    - Conversation history = only for school context. NOT a fact source.
+
     Key considerations:
-    - Is the user's question clear or ambiguous?
+    - What TYPE is this query? (ACADEMIC CONTENT or ADMINISTRATIVE?)
+    - If ACADEMIC CONTENT → search_documents directly, no cost questions
+    - If ADMINISTRATIVE → Is it clear or ambiguous?
     - Do I need more context (school, specific type of process, etc.)?
-    - Which tool should I call next (search_documents)?
-    - Should I ask for clarification before searching?
-    - Are there multiple possible interpretations?
     - CRITICAL: Did search_documents return a message saying "need to ask the user which school"?
       → If YES: Plan to ask user for school immediately
 
-    Examples of ambiguity to detect:
-    - "código" → Academic code (MA3536 for a course) or payment code (for bank transaction)?
-    - "código del curso" → Which course? Which school?
+    Examples of ambiguity to detect (ADMINISTRATIVE ONLY):
+    - "código de pago" vs "código académico" → only ambiguous when context is truly unclear
     - "requisitos para graduarme" → Egresante, Egresado, Bachiller, or Titulado?
     - "costos de trámites" → Which specific process?
     - "información sobre mi carrera" → Which school? What specific info?
@@ -34,7 +44,11 @@ class ThinkingPlanningSchema(BaseModel):
     question_analysis: str = Field(
         description=(
             "Analyze the user's question: "
-            "Is it clear? Is it ambiguous? What is the user really asking?"
+            "FIRST classify: is this ACADEMIC CONTENT (courses/cycles/credits/plan de estudios) "
+            "or ADMINISTRATIVE (trámite/costo/requisito/proceso)? "
+            "Then: Is it clear? Is it ambiguous? What is the user really asking? "
+            "ACADEMIC CONTENT → never ask about costs, search directly. "
+            "ADMINISTRATIVE → check for ambiguity before searching."
         )
     )
 

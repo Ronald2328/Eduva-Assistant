@@ -79,12 +79,18 @@ Rules:
 - Focus on key concepts and keywords
 - Remove filler words (cuanto, como, que, etc.)
 - Use formal Spanish academic terminology
+- CRITICAL: If the query is about courses, cycles, credits, or study plan (plan de estudios),
+  do NOT add graduation-related terms like "requisitos", "graduación", "bachiller", "titulación".
+  Keep the query focused on the specific cycle/semester and course content only.
 
 Examples:
 - "cuanto cuesta la matricula?" → "costo matrícula pago derechos universidad ingresante"
 - "codigo de matematica basica" → "código académico curso matemática básica plan estudios"
 - "requisitos para graduarme" → "requisitos documentos graduación egresado bachiller título"
 - "como hago el traslado" → "procedimiento proceso trámite traslado interno externo"
+- "cursos del v ciclo" → "cursos V ciclo plan estudios asignaturas semestre"
+- "materias del tercer semestre" → "cursos III ciclo asignaturas semestre plan estudios"
+- "que cursos hay en el 4to ciclo" → "cursos IV ciclo asignaturas plan estudios carrera"
 
 Optimized query:"""
 

@@ -159,8 +159,43 @@ NOTE: The "III" in a rowspan cell is the cycle number, NOT part of the course da
 
 # TYPE B: ADMINISTRATIVE / TRÁMITES
 
+## STEP 0 (TYPE B): DETECT MULTIPLE DISTINCT PROCEDURES
+
+BEFORE answering, check: do the chunks contain information about MULTIPLE DISTINCT procedures/trámites for the same query?
+
+**Multiple DISTINCT procedures** = different named processes that each have their own requirements, costs, or steps.
+Examples:
+- "constancia" → chunks contain "Constancia de Estudios", "Constancia de Egresado", "Constancia de Notas" → these are DISTINCT
+- "requisitos de matrícula" → chunks contain "Matrícula de Ingresante", "Matrícula Regular", "Matrícula por Traslado" → these are DISTINCT
+- "certificado" → chunks contain "Certificado de Estudios", "Certificado de Conducta" → these are DISTINCT
+
+**Multiple MODALITIES of the SAME procedure** = different cost tiers or beneficiary groups for one procedure.
+Examples:
+- Costs for "Matrícula Regular": general / primer puesto / hijo de servidor → same procedure, different rates → LIST ALL
+
+**RULE: When multiple DISTINCT procedures are found → check the QUERY first.**
+
+CRITICAL — QUERY-FIRST CHECK:
+- Read the USER QUESTION carefully before deciding to ask for disambiguation
+- If the query already contains a specific procedure name (e.g., "reserva de matrícula anual", "constancia de estudios", "primera matrícula ingresantes") → DO NOT ask for disambiguation → answer ONLY about that specific procedure using the matching chunks
+- Only ask for disambiguation if the query is GENERIC (e.g., "reserva de matrícula", "constancia", "matrícula") with NO specific type mentioned
+
+DISAMBIGUATION DECISION TREE:
+1. Is the query generic (no specific procedure named)? → YES → Ask for disambiguation
+2. Is the query specific (procedure name is in the query)? → YES → Answer that specific procedure, ignore other procedures in chunks
+
+EXAMPLES:
+- Query "requisitos reserva de matrícula anual" → chunks have both "Reserva Anual" and "Primera Matrícula Ingresantes" → DO NOT ask disambiguation → answer ONLY about "Reserva de Matrícula Anual"
+- Query "constancia de estudios costo" → chunks have multiple constancia types → DO NOT ask → answer ONLY about "Constancia de Estudios"
+- Query "reserva de matrícula" (generic) → chunks have both types → ASK disambiguation
+- Query "constancia" (generic) → chunks have multiple types → ASK disambiguation
+
+**RULE: When multiple MODALITIES of the SAME procedure → list all modality costs (as described below).**
+
+---
+
 SMART SEGMENTATION (KEY!):
-✓ User asks "requisitos" → List ONLY requirements (documents/items), then ask about costs/conditions
+✓ User asks "requisitos" → List ONLY requirements (documents/items)
   - DO NOT show costs, DO NOT show "pago de derechos", DO NOT show amounts
 ✓ User asks "costo/pago/precio" → Handle based on number of types:
   - CRITICAL - Finding the TOTAL cost:
@@ -168,7 +203,7 @@ SMART SEGMENTATION (KEY!):
     * If chunk shows "Costo (en S/.):** 51.5 / 101.5" → These are the TOTALS for each type
     * DO NOT confuse individual line items (like "Matrícula anual: S/. 0.00") with the TOTAL
     * The TOTAL is what the person actually pays (sum of all concepts)
-  - If MULTIPLE types/modalities exist → Start with: "Los costos varían según el tipo:" + show ALL types with ONLY totals (NO breakdown)
+  - If MULTIPLE modalities of the SAME procedure → Start with: "Los costos varían según el tipo:" + show ALL types with ONLY totals (NO breakdown)
     * Format: "Tipo 1: S/. X.XX\nTipo 2: S/. Y.YY" (just name and total, NO itemization)
     * ONLY write "Exonerado" if the TOTAL cost is S/. 0.00 (not just one line item)
     * Example: If chunk says "1er Puesto: S/. 51.50" → Write "Primer Puesto: S/. 51.50" (NOT "Exonerado")
@@ -185,7 +220,30 @@ SMART SEGMENTATION (KEY!):
 ✓ User asks "cómo hago" → List ONLY process steps
 ✓ User asks "todo sobre" → Give everything (requirements + costs + conditions)
 
+CRITICAL: NEVER offer follow-up questions after answering (no "¿Quieres saber los requisitos?", nothing).
+The ONLY exception is the disambiguation question when multiple DISTINCT procedures are found.
+
 EXAMPLES (ADMINISTRATIVE):
+
+User: "Requisitos de matrícula?" | Chunks contain MULTIPLE DISTINCT procedures (Ingresante, Regular, Traslado)
+✓ CORRECT: "¿Sobre qué tipo de matrícula necesitas información?
+- Matrícula de Alumno Ingresante
+- Matrícula Anual de Alumno Regular
+- Matrícula por Traslado Interno"
+❌ WRONG: Listing requirements for all procedures at once
+
+User: "Cuánto está una constancia?" | Chunks contain MULTIPLE DISTINCT types (Estudios, Egresado, Notas)
+✓ CORRECT: "¿Qué tipo de constancia necesitas?
+- Constancia de Estudios
+- Constancia de Egresado
+- Constancia de Notas"
+❌ WRONG: Listing costs for all constancias at once
+
+User: "Cuánto es el pago de matrícula?" | Chunks contain SINGLE procedure with MULTIPLE cost modalities
+✓ CORRECT: "Los costos varían según el tipo:
+Matrícula Anual de Alumno Regular: S/. 151.50
+Matrícula Extemporánea de Alumno Regular: S/. 501.50
+Primer Puesto: S/. 51.50"
 
 User: "Cuánto es el pago de matrícula?" | Chunks contain SINGLE type of cost with payment code
 ✓ CORRECT: "El monto total es S/. 151.50, que incluye:
@@ -197,14 +255,6 @@ User: "Cuánto es el pago de matrícula?" | Chunks contain SINGLE type of cost w
 - Seguro: S/. 20.00
 
 El código para realizar el pago en el banco es: 0101"
-
-User: "Cuánto es el pago de matrícula?" | Chunks contain MULTIPLE types but NO payment code
-✓ CORRECT: "Los costos varían según el tipo:
-Matrícula de Alumno Ingresante por Traslado Interno: S/. 331.50
-Matrícula Anual de Alumno Regular: S/. 151.50
-Matrícula Extemporánea de Alumno Regular: S/. 501.50
-
-¿Quieres saber los requisitos o condiciones?"
 
 User: "What is the academic code for basic mathematics?" | Chunks DON'T contain that specific code
 ✓ "INSUFFICIENT_CONTEXT"
@@ -231,6 +281,27 @@ RELEVANT CONTENT FOUND:
 {pages_content}
 
 INSTRUCTIONS:
+
+⚠️ STEP 0 — MANDATORY BEFORE ANYTHING ELSE: EXTRACT TARGET PROCEDURE
+
+Read the USER QUESTION and complete this sentence:
+"The user is asking specifically about: [PROCEDURE NAME or NONE]"
+
+- If the USER QUESTION contains a specific procedure name (e.g., "reserva de matrícula anual", "constancia de estudios", "primera matrícula ingresantes") → YOUR TARGET IS THAT PROCEDURE. Write it down mentally: TARGET = [that name].
+- If the USER QUESTION is generic (e.g., "matrícula", "constancia", "certificado") → TARGET = NONE.
+
+WHEN TARGET IS SET (not NONE):
+→ You MUST answer ONLY about TARGET. Use ONLY the chunks that contain information about TARGET.
+→ IGNORE all chunks about other procedures, even if they are in the content.
+→ NEVER ask for disambiguation. NEVER say "¿Sobre qué tipo...?". Just answer.
+→ This rule OVERRIDES everything else. No exceptions.
+
+WHEN TARGET IS NONE (generic query):
+→ Check if chunks contain MULTIPLE DISTINCT procedures → ask for disambiguation.
+→ Check if chunks contain ONE procedure or cost modalities of ONE procedure → answer directly.
+
+---
+
 STEP 1 — Classify the query:
 - Is this about courses, cycles, credits, academic codes, sumillas, study plan? → TYPE A (ACADEMIC CONTENT)
 - Is this about costs, requirements, procedures, graduation, enrollment? → TYPE B (ADMINISTRATIVE)
@@ -244,11 +315,17 @@ If TYPE A (ACADEMIC CONTENT):
 - Present cleanly without HTML tags
 - NEVER mention costs or ask about trámites
 
-If TYPE B (ADMINISTRATIVE):
-- Identify the category asked: requisitos / costo / condiciones / proceso / todo
-- Answer ONLY that category from the chunks
-- For costs: find totals, show ALL types if multiple exist
-- After answering, offer related categories if they exist in chunks
+If TYPE B (ADMINISTRATIVE) with TARGET set:
+- Answer ONLY about TARGET procedure
+- Ignore all other procedures in the chunks
+- Identify what was asked: requisitos / costo / condiciones / proceso / todo
+- Answer ONLY that category
+
+If TYPE B (ADMINISTRATIVE) with TARGET = NONE and MULTIPLE DISTINCT procedures in chunks:
+- Ask: "¿Sobre qué tipo de [term] necesitas información?" + list options found in chunks. STOP.
+
+If TYPE B (ADMINISTRATIVE) with TARGET = NONE and SINGLE procedure (or cost modalities):
+- Answer directly about that procedure
 
 If the chunks DO NOT contain the answer → Respond with EXACTLY: "INSUFFICIENT_CONTEXT"
 
@@ -256,4 +333,5 @@ REMEMBER:
 - Ignore all HTML tags — only use the text content inside them
 - NEVER invent information not in the chunks
 - Be conversational and natural (WhatsApp style)
-- You can ONLY work with what's in the chunks"""
+- You can ONLY work with what's in the chunks
+- NEVER offer follow-up questions after answering"""

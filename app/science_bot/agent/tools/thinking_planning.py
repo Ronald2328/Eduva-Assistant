@@ -28,6 +28,11 @@ class ThinkingPlanningSchema(BaseModel):
     - Do I need more context (school, specific type of process, etc.)?
     - CRITICAL: Did search_documents return a message saying "need to ask the user which school"?
       → If YES: Plan to ask user for school immediately
+    - CRITICAL: Is this a reply to a DISAMBIGUATION QUESTION from the previous turn?
+      → If YES: Build a SPECIFIC query combining the original topic + the user's choice → call search_documents
+      → NEVER skip searching after disambiguation. NEVER ask for clarification without searching first.
+      → Example: previous bot asked "¿Reserva anual o Ingresantes?" and user replied "reserva" →
+        plan next_tools: ['search_documents'] with query "requisitos reserva de matrícula anual"
 
     Examples of ambiguity to detect (ADMINISTRATIVE ONLY):
     - "código de pago" vs "código académico" → only ambiguous when context is truly unclear
@@ -59,7 +64,8 @@ class ThinkingPlanningSchema(BaseModel):
             "['Ask user for school', 'Search documents with school parameter'] OR "
             "['Search general documents first', 'If tool says need school, ask user for school'] OR "
             "['Ask clarification about type of code', 'Then search with specific query'] OR "
-            "AFTER tool result: ['Tool said need school context', 'Ask: ¿De qué escuela eres?', 'Search again with school']"
+            "AFTER tool result: ['Tool said need school context', 'Ask: ¿De qué escuela eres?', 'Search again with school'] OR "
+            "AFTER DISAMBIGUATION REPLY: ['User replied to disambiguation question', 'Build specific query: [topic] + [user choice]', 'Call search_documents with that query']"
         )
     )
 

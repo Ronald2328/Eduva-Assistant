@@ -89,8 +89,14 @@ async def search_documents(
        - No preambles or padding, but COMPLETE information (all requirements, all conditions, all steps)
 
     Args:
-        query: The user's search question, clear and specific.
-               Example: "What is the cost to validate a course?" or "How much does it cost to graduate?"
+        query: The user's search question, optimized for document search.
+               IMPORTANT - NORMALIZE ACADEMIC TERMS BEFORE SEARCHING:
+               - Cycle numbers MUST use Roman numerals: "segundo ciclo" → "II ciclo", "tercer ciclo" → "III ciclo",
+                 "primer ciclo" → "I ciclo", "cuarto" → "IV", "quinto" → "V", "sexto" → "VI",
+                 "séptimo" → "VII", "octavo" → "VIII", "noveno" → "IX", "décimo" → "X"
+               - Arabic numbers also convert: "ciclo 2" → "II ciclo", "2do ciclo" → "II ciclo"
+               - Keep the rest of the query natural and specific.
+               Example: "cursos del II ciclo" (not "cursos del segundo ciclo" or "cursos del ciclo 2")
         school: (Optional) The user's school or faculty FROM CONVERSATION CONTEXT.
                 Use when: 1) user mentioned school (remember it), 2) tool said to ask for school, 3) question is school-specific
                 Searches results include content from that school AND general information.
@@ -102,6 +108,8 @@ async def search_documents(
     Behavior examples:
         - User: "How much does it cost to validate a course?"
           → Search WITHOUT school → return cost only → DONE
+        - User: "¿Qué cursos hay en el segundo ciclo?" / "ciclo 2" / "2do ciclo"
+          → Normalize query to "cursos del II ciclo" → search with that query
         - User: "What is the academic code for basic mathematics?"
           → Search WITHOUT school → tool says "need to ask user which school" → ask "¿De qué escuela eres?"
           → User: "Matemática" → Search WITH school=MATEMATICA → return code

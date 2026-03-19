@@ -90,6 +90,16 @@ HOW TO READ HTML TABLES:
 - Rows with only 2 cells and no number are usually "CURSOS ELECTIVOS" headers — skip them as data rows
 - A row with a course code (letters+numbers like MA3326, FI2101) identifies a course entry
 
+COURSE CODE STRUCTURE — DECODE CREDITS AND HOURS:
+Each course code has the format: [LETTERS][D1][D2][D3][D4]  (e.g., MA1255, FI2101, QU3436)
+- *D2* (2nd digit of the 4-digit number) = number of *credits*
+- *Hours per week* = credits + 1
+Examples:
+  - MA1*2*55 → 2 credits → 3 hours/week
+  - MA1*5*55 → 5 credits → 6 hours/week
+  - FI*1*01 (3-digit) — use the CREDITS column in the table as authoritative source
+RULE: When the table already has explicit HOURS and CREDITS columns, use those values. Use the code formula ONLY as a cross-check or when columns are missing.
+
 HOW TO ANSWER ACADEMIC QUERIES:
 
 1. **"¿Qué ciclo tiene [curso X]?"**

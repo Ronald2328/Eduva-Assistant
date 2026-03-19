@@ -1,5 +1,6 @@
 """Conversation history manager for Science Bot."""
 
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import logfire
@@ -8,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database.repository import ConversationRepository
+
+CONVERSATION_TIMEOUT_HOURS = 1
 
 
 class ConversationManager:
@@ -52,6 +55,23 @@ class ConversationManager:
             conversation = await self.repository.get_active_conversation(
                 user_id=user.id
             )
+
+            if conversation:
+                # Check if the conversation has expired (no messages in last hour)
+                last_message_time = await self.repository.get_last_message_time(
+                    conversation_id=conversation.id
+                )
+                timeout = timedelta(hours=CONVERSATION_TIMEOUT_HOURS)
+                if last_message_time and datetime.now(UTC) - last_message_time > timeout:
+                    await self.repository.close_conversation(conversation.id)
+                    logfire.info(
+                        "Conversation expired, creating new one",
+                        phone_number=phone_number,
+                        last_message_time=last_message_time.isoformat(),
+                    )
+                    conversation = await self.repository.create_conversation(
+                        user_id=user.id
+                    )
 
             if not conversation:
                 conversation = await self.repository.create_conversation(

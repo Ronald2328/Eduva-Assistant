@@ -1,5 +1,6 @@
 """Repository for conversation, user, message, and document operations."""
 
+from datetime import datetime
 from uuid import UUID
 
 import logfire
@@ -211,6 +212,37 @@ class ConversationRepository:
         except Exception as e:
             logfire.error(
                 "Error in get_recent_messages",
+                conversation_id=str(conversation_id),
+                error=str(e),
+                exc_info=e,
+            )
+            raise
+
+    async def get_last_message_time(
+        self, conversation_id: UUID
+    ) -> datetime | None:
+        """Get the creation time of the last message in a conversation.
+
+        Args:
+            conversation_id: Conversation ID
+
+        Returns:
+            Datetime of last message or None if no messages
+        """
+        try:
+            stmt = (
+                select(Message.created_at)
+                .where(Message.conversation_id == conversation_id)
+                .order_by(Message.created_at.desc())
+                .limit(1)
+            )
+            result = await self.session.execute(stmt)
+            last_time: datetime | None = result.scalar_one_or_none()
+            return last_time
+
+        except Exception as e:
+            logfire.error(
+                "Error in get_last_message_time",
                 conversation_id=str(conversation_id),
                 error=str(e),
                 exc_info=e,

@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import aiofiles
 import logfire
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
@@ -25,8 +26,8 @@ app.include_router(router=api_router)
 @app.get("/admin/upload", response_class=HTMLResponse, include_in_schema=False)
 async def admin_upload_ui():
     """Serve admin document upload UI."""
-    with open(BASE_DIR / "static" / "upload.html") as f:
-        return f.read()
+    async with aiofiles.open(BASE_DIR / "static" / "upload.html") as f:
+        return await f.read()
 
 if settings.ENVIRONMENT == Environment.DEV:
 

@@ -11,6 +11,7 @@ from app.science_bot.agent.tools.search_documents.service import (
 )
 from app.science_bot.agent.tools.thinking_planning import THINKING_TOOL
 
+_search_service = SearchDocumentsService()
 
 class SchoolEnum(str, Enum):
     ADMINISTRACION = "Ciencias Administrativas"
@@ -113,7 +114,7 @@ async def search_documents(
         school_name = school.value if school else "Información General"
         logfire.info("Tool invoked", tool="search_documents", school=school_name, query_length=len(query))
 
-        async with SearchDocumentsService() as service:
+        async with _search_service as service:
             result: SearchDocumentsServiceResponse = await service.search_and_answer(
                 query=query, school=school_name
             )

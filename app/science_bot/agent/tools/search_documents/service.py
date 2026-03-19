@@ -194,14 +194,6 @@ Optimized query:"""
                     chunks_found=len(result.matches),
                 )
 
-                print(f"\n{'='*60}")
-                print(f"[SEARCH] School: {school} | Query: {optimized_query}")
-                print(f"[SEARCH] Chunks found: {len(relevant_matches)}")
-                for i, chunk in enumerate(relevant_matches):
-                    print(f"  [{i+1}] doc='{chunk.document_name}' chunk_idx={chunk.chunk_index} score={chunk.score:.4f}")
-                    print(f"       preview: {chunk.content[:120].replace(chr(10), ' ')!r}")
-                print(f"{'='*60}\n")
-
                 if not relevant_matches:
                     # Special message when searching in general info without school context
                     if school == "Información General":

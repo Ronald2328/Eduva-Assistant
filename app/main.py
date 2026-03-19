@@ -1,4 +1,7 @@
+import os.path as _osp
+from functools import lru_cache
 from pathlib import Path
+from types import CodeType
 
 import aiofiles
 import logfire
@@ -9,6 +12,37 @@ from scalar_fastapi import get_scalar_api_reference  # type: ignore
 from app.core.config import Environment, settings
 from app.lifespan import lifespan
 from app.router import router as api_router
+
+
+# In Python 3.13, Path.absolute() always calls os.getcwd(), even for already-
+# absolute paths.  Logfire's is_user_code() calls Path(co_filename).absolute()
+# on every span/log call, which LangGraph's blocking-call detector intercepts
+# and raises an exception.  We replace is_user_code with a version that avoids
+# os.getcwd() entirely: co_filename is always absolute for real on-disk files.
+def _patch_logfire_is_user_code() -> None:
+    try:
+        from logfire._internal import stack_info as _si
+
+        _cwd = str(Path(".").resolve())  # same as logfire's _CWD, computed in sync ctx
+        _prefixes = _si.NON_USER_CODE_PREFIXES
+
+        @lru_cache(maxsize=8192)
+        def _is_user_code(code: CodeType) -> bool:
+            filename = code.co_filename
+            if not _osp.isabs(filename):
+                filename = _osp.normpath(_osp.join(_cwd, filename))
+            return not (
+                filename.startswith(_prefixes)
+                or code.co_filename.startswith("<")
+                or code.co_name in ("<listcomp>", "<dictcomp>", "<setcomp>")
+            )
+
+        _si.is_user_code = _is_user_code  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+
+_patch_logfire_is_user_code()
 
 BASE_DIR = Path(__file__).resolve().parent
 

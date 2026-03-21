@@ -73,6 +73,10 @@ async def upload_document(
             is_active=True,
         )
 
+        # Commit document record immediately to release the DB connection
+        # before the long OCR + embeddings processing (can take minutes)
+        await session.commit()
+
         logfire.info(
             "Document record created, starting processing",
             document_id=str(document.id),
@@ -81,7 +85,7 @@ async def upload_document(
         # Read file content
         file_content = await pdf_file.read()
 
-        # Process: OCR → Chunks → Embeddings
+        # Process: OCR → Chunks → Embeddings (no DB connection held during this)
         processing_service = DocumentProcessingService()
         result = await processing_service.process_from_file(
             file_content=file_content,
@@ -93,7 +97,7 @@ async def upload_document(
             },
         )
 
-        # Save chunks to DB
+        # Save chunks to DB with a fresh connection from pool
         chunks_count = await DocumentProcessingService.save_chunks(
             session=session,
             document_id=document.id,

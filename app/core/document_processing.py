@@ -364,8 +364,8 @@ class DocumentProcessingService:
             for chunk in preprocessing_result.chunks
         ]
 
-        # Batch insert
-        for batch in batched(chunks_data, 100, strict=False):
+        # Batch insert in small batches — large embeddings make huge queries
+        for batch in batched(chunks_data, 10, strict=False):
             session.add_all(batch)
             await session.flush()
 

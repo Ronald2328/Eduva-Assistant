@@ -20,8 +20,6 @@ class ConversationManager:
         """Initialize the conversation manager."""
         self.session: AsyncSession | None = None
         self.repository: ConversationRepository | None = None
-        self.current_user_id: UUID | None = None
-        self.current_conversation_id: UUID | None = None
 
     def set_session(self, session: AsyncSession) -> None:
         """Set database session.
@@ -34,12 +32,15 @@ class ConversationManager:
 
     async def initialize_user_conversation(
         self, phone_number: str, user_name: str | None = None
-    ) -> None:
+    ) -> UUID:
         """Initialize user and conversation for new interaction.
 
         Args:
             phone_number: User's phone number
             user_name: Optional user name
+
+        Returns:
+            Active conversation ID for this request
         """
         if not self.repository:
             raise RuntimeError("Repository not initialized. Call set_session first.")
@@ -49,7 +50,6 @@ class ConversationManager:
             user = await self.repository.get_or_create_user(
                 phone_number=phone_number, name=user_name
             )
-            self.current_user_id = user.id
 
             # Get active conversation or create new one
             conversation = await self.repository.get_active_conversation(
@@ -78,13 +78,13 @@ class ConversationManager:
                     user_id=user.id
                 )
 
-            self.current_conversation_id = conversation.id
             logfire.info(
                 "User conversation initialized",
                 phone_number=phone_number,
                 user_id=str(user.id),
                 conversation_id=str(conversation.id),
             )
+            return conversation.id
 
         except Exception as e:
             logfire.error(
@@ -95,22 +95,22 @@ class ConversationManager:
             )
             raise
 
-    async def get_conversation_history(self, user_id: str) -> list[BaseMessage]:
+    async def get_conversation_history(self, conversation_id: UUID) -> list[BaseMessage]:
         """Get recent conversation history from database.
 
         Args:
-            user_id: The user identifier (phone number)
+            conversation_id: Conversation ID
 
         Returns:
             List of conversation messages (last N)
         """
-        if not self.repository or not self.current_conversation_id:
+        if not self.repository:
             raise RuntimeError("Conversation not initialized.")
 
         try:
             # Get recent messages from database
             messages_from_db = await self.repository.get_recent_messages(
-                conversation_id=self.current_conversation_id,
+                conversation_id=conversation_id,
                 limit=settings.CONVERSATION_CONTEXT_WINDOW,
             )
 
@@ -124,7 +124,7 @@ class ConversationManager:
 
             logfire.debug(
                 "Conversation history retrieved",
-                conversation_id=str(self.current_conversation_id),
+                conversation_id=str(conversation_id),
                 message_count=len(messages),
             )
             return messages
@@ -132,76 +132,74 @@ class ConversationManager:
         except Exception as e:
             logfire.error(
                 "Error retrieving conversation history",
-                conversation_id=str(self.current_conversation_id),
+                conversation_id=str(conversation_id),
                 error=str(e),
                 exc_info=e,
             )
             raise
 
-    async def add_user_message(self, user_id: str, content: str, message_id: str | None = None) -> None:
+    async def add_user_message(
+        self, conversation_id: UUID, content: str, message_id: str | None = None
+    ) -> None:
         """Add a user message to the conversation.
 
         Args:
-            user_id: The user identifier
+            conversation_id: Conversation ID
             content: The message content
             message_id: Optional WhatsApp message ID
         """
-        if not self.repository or not self.current_conversation_id:
+        if not self.repository:
             raise RuntimeError("Conversation not initialized.")
 
         try:
             await self.repository.add_message(
-                conversation_id=self.current_conversation_id,
+                conversation_id=conversation_id,
                 role="user",
                 content=content,
                 message_id=message_id,
             )
             logfire.debug(
                 "User message added",
-                conversation_id=str(self.current_conversation_id),
+                conversation_id=str(conversation_id),
                 content_length=len(content),
             )
 
         except Exception as e:
             logfire.error(
                 "Error adding user message",
-                conversation_id=str(self.current_conversation_id),
+                conversation_id=str(conversation_id),
                 error=str(e),
                 exc_info=e,
             )
             raise
 
-    async def add_assistant_message(self, user_id: str, content: str) -> None:
+    async def add_assistant_message(self, conversation_id: UUID, content: str) -> None:
         """Add an assistant message to the conversation.
 
         Args:
-            user_id: The user identifier
+            conversation_id: Conversation ID
             content: The message content
         """
-        if not self.repository or not self.current_conversation_id:
+        if not self.repository:
             raise RuntimeError("Conversation not initialized.")
 
         try:
             await self.repository.add_message(
-                conversation_id=self.current_conversation_id,
+                conversation_id=conversation_id,
                 role="assistant",
                 content=content,
             )
             logfire.debug(
                 "Assistant message added",
-                conversation_id=str(self.current_conversation_id),
+                conversation_id=str(conversation_id),
                 content_length=len(content),
             )
 
         except Exception as e:
             logfire.error(
                 "Error adding assistant message",
-                conversation_id=str(self.current_conversation_id),
+                conversation_id=str(conversation_id),
                 error=str(e),
                 exc_info=e,
             )
             raise
-
-
-# Global conversation manager instance
-conversation_manager = ConversationManager()

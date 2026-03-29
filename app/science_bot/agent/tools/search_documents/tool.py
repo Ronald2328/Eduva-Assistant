@@ -11,6 +11,7 @@ from app.science_bot.agent.tools.search_documents.service import (
 )
 from app.science_bot.agent.tools.thinking_planning import THINKING_TOOL
 
+
 class SchoolEnum(str, Enum):
     ADMINISTRACION = "Ciencias Administrativas"
     AGRONOMIA = "Agronomía"
@@ -52,6 +53,9 @@ class SchoolEnum(str, Enum):
 class SearchDocumentsResponse(BaseModel):
     success: bool
     message: str
+    reason_code: str
+    requires_school: bool
+    document_used: str | None = None  # Source document name for agent reference
 
 
 @tool
@@ -63,17 +67,15 @@ async def search_documents(
     Searches for information in academic documents from the National University of Piura.
 
     SMART SEARCH STRATEGY:
-    1. ALWAYS try general search first (no school specified) for any query
-    2. ONLY use school parameter if:
-       - User explicitly mentions their school (ONE TIME: remember it for rest of conversation)
-       - Tool response says "need to ask the user which school" → ASK USER FOR SCHOOL
-       - Question is clearly school-specific (curriculum, degree requirements)
-    3. MAINTAIN SCHOOL CONTEXT: Once user mentions school, use it for all subsequent queries unless they explicitly change it
-    4. DO NOT RE-ASK: Never ask for school twice in conversation
-    5. ANSWER CONCISELY: No unnecessary extensions or offers of additional details
+    1. IF user already mentioned their school (in this message or earlier in conversation) → use school parameter IMMEDIATELY, do NOT search general first
+    2. ONLY search general (no school) when the user has NOT mentioned any school at all
+    3. If general search returns `requires_school=true` or `reason_code=NEEDS_SCHOOL` → ASK USER FOR SCHOOL
+    4. MAINTAIN SCHOOL CONTEXT: Once user mentions school, use it for ALL subsequent queries unless they explicitly change it
+    5. DO NOT RE-ASK: Never ask for school twice in conversation
+    6. ANSWER CONCISELY: No unnecessary extensions or offers of additional details
 
     CRITICAL FLOW WHEN INFORMATION NOT FOUND:
-    - If search result message contains "need to ask the user which school" → This means:
+    - If search result has `requires_school=true` (or `reason_code=NEEDS_SCHOOL`) → This means:
       1. Information exists but requires school context
       2. You MUST ask user: "¿De qué escuela eres?" (in user's language)
       3. Once user provides school, search again WITH school parameter
@@ -101,7 +103,7 @@ async def search_documents(
 
     Returns:
         SearchDocumentsResponse containing success status and AI-generated answer.
-        IMPORTANT: If message contains "need to ask the user which school" → ASK USER FOR SCHOOL
+        IMPORTANT: If response has `requires_school=true` or `reason_code=NEEDS_SCHOOL` → ASK USER FOR SCHOOL
 
     Behavior examples:
         - User: "How much does it cost to validate a course?"
@@ -109,7 +111,7 @@ async def search_documents(
         - User: "¿Qué cursos hay en el segundo ciclo?" / "ciclo 2" / "2do ciclo"
           → Normalize query to "cursos del II ciclo" → search with that query
         - User: "What is the academic code for basic mathematics?"
-          → Search WITHOUT school → tool says "need to ask user which school" → ask "¿De qué escuela eres?"
+          → Search WITHOUT school → tool returns requires_school=true → ask "¿De qué escuela eres?"
           → User: "Matemática" → Search WITH school=MATEMATICA → return code
         - Next message: "What about 5th semester?"
           → Use MATEMATICA from context → search with school → answer
@@ -135,12 +137,17 @@ async def search_documents(
             return SearchDocumentsResponse(
                 success=result.success,
                 message=result.message,
+                reason_code=result.reason_code,
+                requires_school=result.requires_school,
+                document_used=result.document_used,
             )
     except Exception as e:
         logfire.error("Tool execution failed", error=str(e), exc_info=e)
         return SearchDocumentsResponse(
             success=False,
             message=f"Error searching documents: {str(e)}",
+            reason_code="ERROR",
+            requires_school=False,
         )
 
 

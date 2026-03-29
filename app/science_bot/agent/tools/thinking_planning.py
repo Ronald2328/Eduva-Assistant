@@ -26,7 +26,7 @@ class ThinkingPlanningSchema(BaseModel):
     - If ACADEMIC CONTENT → search_documents directly, no cost questions
     - If ADMINISTRATIVE → Is it clear or ambiguous?
     - Do I need more context (school, specific type of process, etc.)?
-    - CRITICAL: Did search_documents return a message saying "need to ask the user which school"?
+    - CRITICAL: Did search_documents return requires_school=true or reason_code=NEEDS_SCHOOL?
       → If YES: Plan to ask user for school immediately
     - CRITICAL: Is this a reply to a DISAMBIGUATION QUESTION from the previous turn?
       → If YES: Build a SPECIFIC query combining the original topic + the user's choice → call search_documents
@@ -40,10 +40,11 @@ class ThinkingPlanningSchema(BaseModel):
     - "costos de trámites" → Which specific process?
     - "información sobre mi carrera" → Which school? What specific info?
 
-    DETECTING WHEN TO ASK FOR SCHOOL:
-    - After calling search_documents, if the result message contains "need to ask the user which school"
-      → This is a CLEAR SIGNAL to ask: "¿De qué escuela eres?" (in user's language)
-    - Remember: search WITHOUT school first, only ask for school when tool explicitly indicates it
+    SCHOOL DETECTION — CRITICAL:
+    - If the user mentions their school (in this message or earlier in conversation) → set school parameter in search_documents IMMEDIATELY. NEVER search general first.
+    - Only search without school when the user has not mentioned any school at all.
+    - After calling search_documents, if result has requires_school=true or reason_code=NEEDS_SCHOOL → ask: "¿De qué escuela eres?" (in user's language)
+    - Remember: skip the general-first step whenever school is already known from context.
     """
 
     question_analysis: str = Field(
@@ -64,7 +65,7 @@ class ThinkingPlanningSchema(BaseModel):
             "['Ask user for school', 'Search documents with school parameter'] OR "
             "['Search general documents first', 'If tool says need school, ask user for school'] OR "
             "['Ask clarification about type of code', 'Then search with specific query'] OR "
-            "AFTER tool result: ['Tool said need school context', 'Ask: ¿De qué escuela eres?', 'Search again with school'] OR "
+            "AFTER tool result: ['Tool returned requires_school=true', 'Ask: ¿De qué escuela eres?', 'Search again with school'] OR "
             "AFTER DISAMBIGUATION REPLY: ['User replied to disambiguation question', 'Build specific query: [topic] + [user choice]', 'Call search_documents with that query']"
         )
     )
@@ -93,18 +94,18 @@ async def thinking_planning_tool(
     - Detect when clarification is needed BEFORE searching documents
     - Plan which tools to call and in what order
     - Decide on search strategy (general vs school-specific)
-    - CRITICAL: Detect when search_documents says "need to ask user which school" → ASK FOR SCHOOL
+    - CRITICAL: Detect when search_documents returns requires_school=true or reason_code=NEEDS_SCHOOL → ASK FOR SCHOOL
 
     Critical use cases:
     - User asks about "código" → Is it academic code or payment code?
     - User asks about "requisitos" → Requirements for what specifically?
     - User asks about "costos" → Cost of which process?
     - User mentions their school → Remember it for future queries
-    - search_documents result says "need to ask user which school" → Ask: "¿De qué escuela eres?"
+    - search_documents result returns requires_school=true → Ask: "¿De qué escuela eres?"
 
     WORKFLOW AFTER search_documents FAILURE:
     1. Read the tool result message carefully
-    2. If message contains "need to ask the user which school" → Plan to ask user for school
+    2. If requires_school=true or reason_code=NEEDS_SCHOOL → Plan to ask user for school
     3. Ask user directly: "¿De qué escuela eres?" (no preambles, no options)
     4. Once user provides school, search again with school parameter
 

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database.database import AsyncSessionLocal
 from app.science_bot.agent.graph import get_graph
 from app.science_bot.agent.schemas import InputState
-from app.science_bot.core.conversation_manager import conversation_manager
+from app.science_bot.core.conversation_manager import ConversationManager
 
 
 @logfire.instrument("process_message")
@@ -34,6 +34,8 @@ async def process_message(
     phone_number = phone_number or user_id
 
     async_session: AsyncSession | None = None
+    manager = ConversationManager()
+    conversation_id = None
 
     try:
         logfire.info(
@@ -46,24 +48,24 @@ async def process_message(
         # Create database session
         with logfire.span("create_db_session"):
             async_session = AsyncSessionLocal()
-            conversation_manager.set_session(session=async_session)
+            manager.set_session(session=async_session)
 
         # Initialize user and conversation
         with logfire.span("initialize_user_conversation"):
-            await conversation_manager.initialize_user_conversation(
+            conversation_id = await manager.initialize_user_conversation(
                 phone_number=phone_number, user_name=user_name
             )
 
         # Add user message to conversation history
         with logfire.span("add_user_message_to_history"):
-            await conversation_manager.add_user_message(
-                user_id=user_id, content=message, message_id=message_id
+            await manager.add_user_message(
+                conversation_id=conversation_id, content=message, message_id=message_id
             )
 
         # Get full conversation history for context
         with logfire.span("get_conversation_history"):
             conversation_history: list[BaseMessage] = (
-                await conversation_manager.get_conversation_history(user_id=user_id)
+                await manager.get_conversation_history(conversation_id=conversation_id)
             )
             logfire.info(
                 "Conversation history retrieved",
@@ -108,8 +110,8 @@ async def process_message(
 
         # Add assistant response to conversation history
         with logfire.span("add_assistant_message_to_history"):
-            await conversation_manager.add_assistant_message(
-                user_id=user_id, content=response_content
+            await manager.add_assistant_message(
+                conversation_id=conversation_id, content=response_content
             )
 
         # Commit database transaction
@@ -132,10 +134,11 @@ async def process_message(
 
         try:
             # Try to save error response to history
-            await conversation_manager.add_assistant_message(
-                user_id=user_id, content=error_response
-            )
-            if async_session:
+            if conversation_id:
+                await manager.add_assistant_message(
+                    conversation_id=conversation_id, content=error_response
+                )
+            if async_session and conversation_id:
                 await async_session.commit()
         except Exception as db_error:
             logfire.error(

@@ -52,7 +52,7 @@ class DocumentChunk(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     document_id: Mapped[UUID] = mapped_column(
-        ForeignKey("documents.id"), nullable=False, index=True
+        ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True
     )
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)

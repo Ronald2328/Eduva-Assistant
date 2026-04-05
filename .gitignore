@@ -206,3 +206,10 @@ typings/
 .langgraph_api/
 .claude/
 .agents/
+
+# Temp files
+*.tmp
+*.temp
+*.log
+*.bak
+tmp/

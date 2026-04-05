@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import verify_admin
+from app.core.config import Environment, settings
 from app.core.database.database import get_db
 from app.core.database.repository import DocumentRepository
 from app.core.document_processing import DocumentProcessingService
@@ -97,6 +98,15 @@ async def upload_document(
             },
         )
 
+        markdown_snapshot_path: str | None = None
+        if settings.ENVIRONMENT == Environment.DEV:
+            markdown_snapshot_path = await (
+                DocumentProcessingService.save_markdown_snapshot(
+                    markdown_text=result.content,
+                    document_id=document.id,
+                )
+            )
+
         # Save chunks to DB with a fresh connection from pool
         chunks_count = await DocumentProcessingService.save_chunks(
             session=session,
@@ -111,6 +121,7 @@ async def upload_document(
             document_id=str(document.id),
             chunks_created=chunks_count,
             processing_time=round(result.processing_time, 2),
+            markdown_snapshot_path=markdown_snapshot_path,
         )
 
         return DocumentUploadResponse(

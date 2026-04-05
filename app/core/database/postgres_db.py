@@ -339,11 +339,16 @@ class PostgresService:
         if self.session is None:
             raise ValueError("Database not connected. Call connect_db() first.")
 
-        # Search specifically for the Markdown heading form "### N CICLO"
-        # (not just any mention of "I CICLO" which would match mermaid diagrams etc.)
+        # OCR/chunking may produce cycle headings as markdown ("# V CICLO",
+        # "## V CICLO") or plain text ("V CICLO"). Keep this broad so we do
+        # not miss long table chunks.
         heading_text = cycle_heading.lstrip("#").strip()
-        # Match ### I CICLO or ## I CICLO or #### I CICLO
-        search_pattern = f"%### {heading_text}%"
+        search_patterns = [
+            f"%# {heading_text}%",
+            f"%## {heading_text}%",
+            f"%### {heading_text}%",
+            f"%{heading_text}%",
+        ]
 
         stmt = (
             select(DocumentChunk, Document.nombre, Document.school)
@@ -351,24 +356,22 @@ class PostgresService:
             .where(
                 Document.is_active == True,  # noqa: E712
                 Document.school.in_([school, "Información General"]),
-                DocumentChunk.content.ilike(search_pattern),
+                or_(*(DocumentChunk.content.ilike(pattern) for pattern in search_patterns)),
             )
         )
 
         result = await self.session.execute(stmt)
         rows = result.all()
 
-        # Pattern: heading must appear AND be followed by a <table> tag within 600 chars
-        # This filters out chunks that merely END with the heading (original split boundary)
-        _heading_followed_by_table = re.compile(
-            rf"###\s+{re.escape(heading_text)}\s[\s\S]{{0,600}}<table",
+        # Accept markdown heading or plain-text heading, case-insensitive.
+        _heading_pattern = re.compile(
+            rf"(?:^|\n)\s*(?:#+\s*)?{re.escape(heading_text)}\b",
             re.IGNORECASE,
         )
 
         matches: list[ChunkMatch] = []
         for chunk, doc_nombre, doc_school in rows:
-            # Skip chunks where the heading is only at the end (not followed by a table)
-            if not _heading_followed_by_table.search(chunk.content):
+            if not _heading_pattern.search(chunk.content):
                 continue
 
             metadata = None

@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
+from collections.abc import Mapping
 from functools import partial
 from itertools import batched
-from typing import Any
+from pathlib import Path
+from typing import cast
 from uuid import UUID
 
 import logfire
@@ -30,13 +33,17 @@ def _count_tokens(text: str, tokenizer: Encoding) -> int:
     return len(tokenizer.encode(text))
 
 
+MetadataValue = str | int | float
+MetadataDict = dict[str, MetadataValue]
+
+
 class Chunk(BaseModel):
     """A processed chunk ready for storage."""
 
     index: int
     content: str
     embedding: list[float]
-    metadata: dict[str, Any]
+    metadata: MetadataDict
 
 
 class PreprocessingResult(BaseModel):
@@ -51,6 +58,14 @@ class ChunkingService:
     """Splits markdown text into chunks using a 3-level strategy."""
 
     PAGE_SEPARATOR = "\n\f\n"
+    TABLE_BLOCK_RE = re.compile(
+        r"<table[\s\S]*?</table>",
+        re.IGNORECASE,
+    )
+    CYCLE_IN_TABLE_RE = re.compile(
+        r"<(?:th|td)[^>]*>\s*([IVX]{1,4})\s+CICLO\s*</(?:th|td)>",
+        re.IGNORECASE,
+    )
 
     def __init__(
         self,
@@ -78,6 +93,78 @@ class ChunkingService:
             length_function=self._count_tokens,
         )
 
+    def _metadata_copy(self, metadata: object) -> dict[str, object]:
+        """Create a string-keyed metadata copy from loosely typed LangChain metadata."""
+        if not isinstance(metadata, Mapping):
+            return {}
+        typed_metadata = cast(Mapping[object, object], metadata)
+        return {str(k): v for k, v in typed_metadata.items()}
+
+    def _extract_cycle_heading(self, table_html: str) -> str | None:
+        """Extract cycle heading (e.g., 'V CICLO') from table headers/cells."""
+        match = self.CYCLE_IN_TABLE_RE.search(table_html)
+        if not match:
+            return None
+        return f"{match.group(1).upper()} CICLO"
+
+    def _split_table_aware(self, doc: LCDocument) -> list[LCDocument]:
+        """Split one markdown document into text/table units without crossing tables.
+
+        This avoids chunks that mix the end of one cycle table with the beginning
+        of the next one.
+        """
+        content = doc.page_content
+        matches = list(self.TABLE_BLOCK_RE.finditer(content))
+        if not matches:
+            return [doc]
+
+        split_docs: list[LCDocument] = []
+        last_end = 0
+
+        for match in matches:
+            before = content[last_end:match.start()].strip(self.PAGE_SEPARATOR).strip()
+            if before:
+                split_docs.append(
+                    LCDocument(
+                        page_content=before,
+                        metadata=self._metadata_copy(getattr(doc, "metadata", {})),
+                    )
+                )
+
+            table_html = match.group(0).strip(self.PAGE_SEPARATOR).strip()
+            cycle_heading = self._extract_cycle_heading(table_html)
+            table_text = (
+                f"### {cycle_heading}\n{table_html}" if cycle_heading else table_html
+            )
+            table_metadata = self._metadata_copy(getattr(doc, "metadata", {}))
+            if cycle_heading:
+                table_metadata["table_cycle_heading"] = cycle_heading
+
+            split_docs.append(
+                LCDocument(
+                    page_content=table_text,
+                    metadata=table_metadata,
+                )
+            )
+            last_end = match.end()
+
+        after = content[last_end:].strip(self.PAGE_SEPARATOR).strip()
+        if after:
+            split_docs.append(
+                LCDocument(
+                    page_content=after,
+                    metadata=self._metadata_copy(getattr(doc, "metadata", {})),
+                )
+            )
+
+        return split_docs
+
+    def _fit_document_size(self, doc: LCDocument) -> list[LCDocument]:
+        """Ensure a document fits max token size using recursive fallback."""
+        if self._count_tokens(doc.page_content) <= self.max_tokens_per_chunk:
+            return [doc]
+        return self.recursive_splitter.split_documents([doc])
+
     @logfire.instrument("ChunkingService.split")
     def split(self, markdown_text: str) -> list[LCDocument]:
         """Split markdown text into chunks using 3-level strategy.
@@ -101,11 +188,11 @@ class ChunkingService:
         for main_doc in main_documents:
             main_tokens = self._count_tokens(main_doc.page_content)
             main_doc.metadata = {
-                **main_doc.metadata,  # type: ignore
+                **self._metadata_copy(getattr(main_doc, "metadata", {})),
                 "main_chunk_tokens": main_tokens,
             }
             if main_tokens <= self.max_tokens_per_chunk:
-                all_documents.append(main_doc)
+                all_documents.extend(self._split_table_aware(main_doc))
                 continue
 
             secondary_documents = self.secondary_splitter.split_text(
@@ -114,23 +201,23 @@ class ChunkingService:
             for sec_doc in secondary_documents:
                 sec_tokens = self._count_tokens(sec_doc.page_content)
                 sec_doc.metadata = {
-                    **main_doc.metadata,  # type: ignore
-                    **sec_doc.metadata,  # type: ignore
+                    **self._metadata_copy(getattr(main_doc, "metadata", {})),
+                    **self._metadata_copy(getattr(sec_doc, "metadata", {})),
                     "secondary_chunk_tokens": sec_tokens,
                 }
                 if sec_tokens <= self.max_tokens_per_chunk:
-                    all_documents.append(sec_doc)
+                    all_documents.extend(self._split_table_aware(sec_doc))
                     continue
 
-                recursive_documents = self.recursive_splitter.split_documents(
-                    [sec_doc]
-                )
-                all_documents.extend(recursive_documents)
+                table_aware_documents = self._split_table_aware(sec_doc)
+                for table_doc in table_aware_documents:
+                    all_documents.extend(self._fit_document_size(table_doc))
 
         # Prepend headers to chunk content for context
         for doc in all_documents:
-            header_1 = doc.metadata.get("header_1")  # type: ignore
-            header_2 = doc.metadata.get("header_2")  # type: ignore
+            metadata = self._metadata_copy(getattr(doc, "metadata", {}))
+            header_1 = metadata.get("header_1")
+            header_2 = metadata.get("header_2")
 
             header_text = ""
             if header_1 and isinstance(header_1, str):
@@ -218,12 +305,20 @@ class DocumentProcessingService:
         self.chunking_service = ChunkingService()
         self.embeddings_service = EmbeddingsService()
 
+    @staticmethod
+    def _metadata_copy(metadata: object) -> dict[str, object]:
+        """Create a string-keyed metadata copy from loosely typed LangChain metadata."""
+        if not isinstance(metadata, Mapping):
+            return {}
+        typed_metadata = cast(Mapping[object, object], metadata)
+        return {str(k): v for k, v in typed_metadata.items()}
+
     @logfire.instrument("DocumentProcessingService.process_from_url")
     async def process_from_url(
         self,
         pdf_url: str,
         document_id: UUID,
-        document_metadata: dict[str, Any] | None = None,
+        document_metadata: Mapping[str, MetadataValue] | None = None,
     ) -> PreprocessingResult:
         """Process a PDF from URL: OCR → Chunks → Embeddings.
 
@@ -252,7 +347,7 @@ class DocumentProcessingService:
         self,
         file_content: bytes,
         document_id: UUID,
-        document_metadata: dict[str, Any] | None = None,
+        document_metadata: Mapping[str, MetadataValue] | None = None,
     ) -> PreprocessingResult:
         """Process a PDF from file bytes: OCR → Chunks → Embeddings.
 
@@ -280,7 +375,7 @@ class DocumentProcessingService:
         self,
         markdown_text: str,
         document_id: UUID,
-        document_metadata: dict[str, Any] | None,
+        document_metadata: Mapping[str, MetadataValue] | None,
         start_time: float,
     ) -> PreprocessingResult:
         """Process markdown text into chunks with embeddings."""
@@ -306,7 +401,7 @@ class DocumentProcessingService:
         embeddings = await self.embeddings_service.embed_texts(texts)
 
         # Build Chunk objects
-        base_metadata = document_metadata or {}
+        base_metadata: MetadataDict = dict(document_metadata or {})
         chunks = [
             Chunk(
                 index=i,
@@ -314,7 +409,13 @@ class DocumentProcessingService:
                 embedding=embedding,
                 metadata={
                     **base_metadata,
-                    **{k: v for k, v in lc_chunk.metadata.items() if isinstance(v, (str, int, float))},  # type: ignore
+                    **{
+                        k: v
+                        for k, v in self._metadata_copy(
+                            getattr(lc_chunk, "metadata", {})
+                        ).items()
+                        if isinstance(v, (str, int, float))
+                    },
                     "embedding_model": self.embeddings_service.model,
                 },
             )
@@ -336,6 +437,37 @@ class DocumentProcessingService:
             chunks=chunks,
             processing_time=processing_time,
         )
+
+    @staticmethod
+    async def save_markdown_snapshot(
+        markdown_text: str,
+        document_id: UUID,
+        output_dir: str = "tmp/ocr_markdown",
+    ) -> str:
+        """Persist OCR markdown to disk for debugging chunking strategies.
+
+        Args:
+            markdown_text: OCR output in markdown format
+            document_id: Document ID used for file naming
+            output_dir: Directory where markdown snapshots are stored
+
+        Returns:
+            Absolute path to the saved markdown file
+        """
+        base_dir = Path(output_dir)
+        await asyncio.to_thread(base_dir.mkdir, parents=True, exist_ok=True)
+
+        file_path = base_dir / f"{document_id}.md"
+        await asyncio.to_thread(file_path.write_text, markdown_text, "utf-8")
+
+        logfire.info(
+            "OCR markdown snapshot saved",
+            document_id=str(document_id),
+            path=str(file_path.resolve()),
+            chars=len(markdown_text),
+        )
+
+        return str(file_path.resolve())
 
     @staticmethod
     async def save_chunks(

@@ -249,8 +249,9 @@ class PostgresService:
     async def get_adjacent_chunks(
         self,
         chunk_refs: list[tuple[str, int]],  # list of (document_id, chunk_index)
+        radius: int = 2,
     ) -> list[ChunkMatch]:
-        """Fetch adjacent chunks (index ± 1) for the given document/chunk pairs.
+        """Fetch adjacent chunks (index ± radius) for the given document/chunk pairs.
 
         Used to expand context around vector-search matches so that HTML tables
         split across chunk boundaries are reconstructed.
@@ -267,16 +268,25 @@ class PostgresService:
         if not chunk_refs:
             return []
 
-        # Build conditions: for each (doc_id, idx) fetch idx-1 and idx+1
+        # Build conditions: for each (doc_id, idx) fetch nearby indices by radius
         adjacent_conditions: list[ColumnElement[bool]] = []
         for doc_id, chunk_idx in chunk_refs:
-            adjacent_indices = [chunk_idx - 1, chunk_idx + 1]
+            adjacent_indices = [
+                i
+                for i in range(chunk_idx - radius, chunk_idx + radius + 1)
+                if i != chunk_idx and i >= 0
+            ]
+            if not adjacent_indices:
+                continue
             adjacent_conditions.append(
                 and_(
                     DocumentChunk.document_id == UUID(doc_id),
                     DocumentChunk.chunk_index.in_(adjacent_indices),
                 )
             )
+
+        if not adjacent_conditions:
+            return []
 
         stmt = (
             select(DocumentChunk, Document.nombre, Document.school)

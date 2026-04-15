@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import html
+import re
 from enum import Enum
 
 import logfire
@@ -10,7 +12,11 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field, SecretStr
 
 from app.core.config import settings
-from app.core.database.postgres_db import ChunkMatch, PostgresService, detect_cycle_from_query
+from app.core.database.postgres_db import (
+    ChunkMatch,
+    PostgresService,
+    detect_cycle_from_query,
+)
 from app.science_bot.agent.prompts.answer_generator_prompt import (
     ANSWER_GENERATOR_SYSTEM_PROMPT,
     ANSWER_GENERATOR_USER_PROMPT_TEMPLATE,
@@ -181,6 +187,311 @@ Optimized query:"""
         response = await self.llm.ainvoke(messages)
         return str(response.content).strip()  # type: ignore
 
+    @staticmethod
+    def _recompute_cycle_total_from_codes(answer: str) -> str:
+        """Correct 'Total del ciclo' using D2 digit from listed course codes.
+
+        Code convention: [PREFIX][D1][D2][D3][D4], so D2 is total credits.
+        """
+        if "Total del ciclo" not in answer:
+            return answer
+
+        # Extract 4-digit payload from course codes in list lines.
+        # Examples matched: "CB 3347", "CB3347", "(CB 3347)".
+        digit_blocks = re.findall(r"\b[A-Z]{1,4}\s?(\d{4})\b", answer, flags=re.IGNORECASE)
+        if not digit_blocks:
+            return answer
+
+        recomputed_total = sum(int(block[1]) for block in digit_blocks)
+        total_line_re = re.compile(
+            r"(Total del ciclo(?:\s*\(según tabla\))?\s*:\s*\*?)(\d+)(\s*créditos\*?)",
+            flags=re.IGNORECASE,
+        )
+        match = total_line_re.search(answer)
+        if not match:
+            return answer
+
+        reported_total = int(match.group(2))
+        if reported_total == recomputed_total:
+            return answer
+
+        corrected = total_line_re.sub(
+            rf"\g<1>{recomputed_total}\g<3>",
+            answer,
+            count=1,
+        )
+        return corrected
+
+    @staticmethod
+    def _apply_single_elective_policy(answer: str) -> str:
+        """When an Electivos section exists, count only one elective in cycle total.
+
+        Policy requested by business rules:
+        - Student chooses only 1 elective course.
+        - Total cycle credits = mandatory credits + credits of 1 elective.
+        - Credits are derived from D2 in course code.
+        """
+        elective_marker_re = re.compile(
+            r"\(\s*e(?:lectivo)?\s*\)",
+            flags=re.IGNORECASE,
+        )
+        if "electiv" not in answer.lower() and not elective_marker_re.search(answer):
+            return answer
+
+        lines = answer.splitlines()
+        in_electives = False
+        elective_heading_idx: int | None = None
+        mandatory_credits: list[int] = []
+        elective_credits: list[int] = []
+        mandatory_items: list[str] = []
+        elective_items: list[str] = []
+
+        code_re = re.compile(r"\b[A-Z]{1,4}\s?(\d{4})\b", flags=re.IGNORECASE)
+        credits_re = re.compile(r"(\d+)\s*créditos?", flags=re.IGNORECASE)
+        item_re = re.compile(r"^\s*(?:\d+\.\s+|-\s+)")
+        total_re = re.compile(r"Total del ciclo", flags=re.IGNORECASE)
+
+        def credits_from_line(line: str) -> int | None:
+            m = code_re.search(line)
+            if m:
+                return int(m.group(1)[1])
+
+            cm = credits_re.search(line)
+            if cm:
+                return int(cm.group(1))
+
+            return None
+
+        for idx, line in enumerate(lines):
+            lower = line.lower().strip()
+            if not lower:
+                continue
+            if "electivos" in lower:
+                in_electives = True
+                elective_heading_idx = idx
+                continue
+            if total_re.search(line):
+                in_electives = False
+                continue
+            if not item_re.match(line):
+                continue
+
+            credits = credits_from_line(line)
+            if credits is None:
+                continue
+            if in_electives or elective_marker_re.search(line):
+                elective_credits.append(credits)
+                elective_items.append(line)
+            else:
+                mandatory_credits.append(credits)
+                mandatory_items.append(line)
+
+        if not elective_credits:
+            return answer
+
+        chosen_elective_credits = elective_credits[0]
+        corrected_total = sum(mandatory_credits) + chosen_elective_credits
+
+        # Normalize presentation: keep electives in their own section.
+        if elective_items and mandatory_items:
+            rebuilt_lines: list[str] = []
+            course_header_written = False
+            for line in lines:
+                stripped = line.strip()
+                if item_re.match(line):
+                    # We rebuild list items below.
+                    continue
+                if stripped.lower().startswith("electivos"):
+                    # Rebuild with normalized heading below.
+                    continue
+                if total_re.search(line):
+                    # Keep total at the end after rebuilt sections.
+                    continue
+                if stripped:
+                    rebuilt_lines.append(line)
+                    if "ciclo" in stripped.lower() and not course_header_written:
+                        course_header_written = True
+
+            # Add mandatory numbered list
+            if rebuilt_lines and rebuilt_lines[-1].strip():
+                rebuilt_lines.append("")
+            for idx, item in enumerate(mandatory_items, start=1):
+                clean_item = re.sub(r"^\s*(?:\d+\.\s+|-\s+)", "", item).strip()
+                rebuilt_lines.append(f"{idx}. {clean_item}")
+
+            rebuilt_lines.append("")
+            rebuilt_lines.append(
+                f"Electivos (solo se puede elegir 1 curso de {chosen_elective_credits} créditos):"
+            )
+            for item in elective_items:
+                clean_item = re.sub(r"^\s*(?:\d+\.\s+|-\s+)", "", item).strip()
+                rebuilt_lines.append(f"- {clean_item}")
+
+            rebuilt_lines.append("")
+            rebuilt_lines.append(f"Total del ciclo (según tabla): *{corrected_total} créditos*")
+            answer = "\n".join(rebuilt_lines).strip()
+            return answer
+
+        total_line_re = re.compile(
+            r"(Total del ciclo(?:\s*\(según tabla\))?\s*:\s*\*?)(\d+)(\s*créditos\*?)",
+            flags=re.IGNORECASE,
+        )
+        if total_line_re.search(answer):
+            answer = total_line_re.sub(
+                rf"\g<1>{corrected_total}\g<3>",
+                answer,
+                count=1,
+            )
+        else:
+            answer = f"{answer.rstrip()}\n\nTotal del ciclo: *{corrected_total} créditos*"
+
+        note_text = f"Nota: En electivos, solo se puede elegir *1 curso* ({chosen_elective_credits} créditos)."
+        if "solo se puede elegir" not in answer.lower():
+            lines = answer.splitlines()
+            if elective_heading_idx is not None:
+                insert_at = min(elective_heading_idx + 1, len(lines))
+            else:
+                insert_at = len(lines)
+            lines.insert(insert_at, note_text)
+            answer = "\n".join(lines)
+
+        return answer
+
+    @staticmethod
+    def _replace_generic_elective_row_with_options(
+        answer: str,
+        chunks: list[ChunkMatch],
+        cycle_heading: str | None = None,
+    ) -> str:
+        """Replace generic 'Curso Electivo' row with real options from chunks."""
+        if not re.search(r"curso\s+electivo", answer, flags=re.IGNORECASE):
+            return answer
+
+        sorted_chunks = sorted(chunks, key=lambda c: (c.document_id, c.chunk_index))
+        section_blob = ""
+        anchor_indices: list[int] = []
+        if cycle_heading:
+            for idx, chunk in enumerate(sorted_chunks):
+                if cycle_heading.upper() in chunk.content.upper():
+                    anchor_indices.append(idx)
+
+        electivo_candidates: list[int] = [
+            idx
+            for idx, chunk in enumerate(sorted_chunks)
+            if "CURSOS ELECTIVOS" in chunk.content.upper()
+        ]
+
+        if not electivo_candidates:
+            return answer
+
+        if anchor_indices:
+            # Prefer CURSOS ELECTIVOS sections that appear AFTER the queried cycle.
+            anchor_idx = min(anchor_indices)
+            forward_candidates = [i for i in electivo_candidates if i >= anchor_idx]
+            if forward_candidates:
+                target_idx = min(forward_candidates, key=lambda i: i - anchor_idx)
+            else:
+                target_idx = min(
+                    electivo_candidates,
+                    key=lambda i: min(abs(i - a) for a in anchor_indices),
+                )
+        else:
+            target_idx = electivo_candidates[0]
+
+        section_blob += sorted_chunks[target_idx].content + "\n"
+        # Include a couple of neighbor chunks where the elective table may continue.
+        for j in range(target_idx + 1, min(target_idx + 3, len(sorted_chunks))):
+            if sorted_chunks[j].document_id != sorted_chunks[target_idx].document_id:
+                break
+            section_blob += sorted_chunks[j].content + "\n"
+
+        if not section_blob:
+            return answer
+
+        section_upper = section_blob.upper()
+        marker_pos = section_upper.find("CURSOS ELECTIVOS")
+        if marker_pos != -1:
+            table_start = section_upper.find("<TABLE", marker_pos)
+            table_end = section_upper.find("</TABLE>", table_start) if table_start != -1 else -1
+            if table_start != -1 and table_end != -1:
+                section_blob = section_blob[table_start:table_end + len("</table>")]
+
+        row_re = re.compile(r"<tr[^>]*>([\s\S]*?)</tr>", flags=re.IGNORECASE)
+        cell_re = re.compile(r"<t[dh][^>]*>([\s\S]*?)</t[dh]>", flags=re.IGNORECASE)
+        tag_re = re.compile(r"<[^>]+>")
+        code_re = re.compile(r"^[A-Z]{1,4}\s?\d{4}$", flags=re.IGNORECASE)
+
+        elective_options: list[tuple[str, str, int]] = []
+        seen_codes: set[str] = set()
+
+        for row_html in row_re.findall(section_blob):
+            raw_cells = cell_re.findall(row_html)
+            if len(raw_cells) < 2:
+                continue
+            cells = [
+                html.unescape(tag_re.sub(" ", cell)).replace("\n", " ").strip()
+                for cell in raw_cells
+            ]
+            cells = [re.sub(r"\s{2,}", " ", c) for c in cells]
+            code = cells[0].upper()
+            if not code_re.match(code):
+                continue
+            if code in seen_codes:
+                continue
+            name = cells[1].strip()
+            if not name or "NOMBRE DEL CURSO" in name.upper():
+                continue
+
+            credits: int | None = None
+            if len(cells) >= 6 and re.fullmatch(r"\d{1,2}", cells[5] or ""):
+                credits = int(cells[5])
+            if credits is None:
+                digits = re.sub(r"\D", "", code)
+                if len(digits) == 4:
+                    credits = int(digits[1])
+            if credits is None:
+                continue
+
+            seen_codes.add(code)
+            elective_options.append((name, code, credits))
+
+        if not elective_options:
+            return answer
+
+        lines = answer.splitlines()
+        item_re = re.compile(r"^\s*(?:\d+\.\s+|-\s+)")
+        total_re = re.compile(r"Total del ciclo", flags=re.IGNORECASE)
+
+        cleaned_lines: list[str] = []
+        for line in lines:
+            if re.search(r"curso\s+electivo", line, flags=re.IGNORECASE):
+                continue
+            if line.strip().lower().startswith("electivos"):
+                continue
+            if item_re.match(line) and "(E)" in line.upper():
+                continue
+            cleaned_lines.append(line)
+
+        insert_idx = next(
+            (idx for idx, line in enumerate(cleaned_lines) if total_re.search(line)),
+            len(cleaned_lines),
+        )
+
+        elective_credits = elective_options[0][2]
+        elective_block = [
+            "",
+            f"Electivos (solo se puede elegir 1 curso de {elective_credits} créditos):",
+        ]
+        elective_block.extend(
+            [f"- {name} ({code}) — {credits} créditos" for name, code, credits in elective_options]
+        )
+        elective_block.append("")
+
+        rebuilt = (
+            cleaned_lines[:insert_idx] + elective_block + cleaned_lines[insert_idx:]
+        )
+        return "\n".join(rebuilt).strip()
+
     @logfire.instrument("search_and_answer")
     async def search_and_answer(
         self, query: str, school: str, max_chunks: int = 5
@@ -189,7 +500,7 @@ Optimized query:"""
 
         1. Optimize query for better semantic search
         2. Vector search: top-5 most relevant chunks (filtered by school + "Información General")
-        3. Expand with adjacent chunks (index ± 1) to reconstruct split HTML tables
+        3. Expand with nearby chunks (index ± 2) to reconstruct split HTML tables
         4. Generate answer from merged context
         5. Return response
 
@@ -233,6 +544,15 @@ Optimized query:"""
                     keyword_matches = await self.db_service.get_chunks_by_cycle_heading(
                         cycle_heading, school
                     )
+                    # Also fetch elective catalog sections when user asks cycle course lists.
+                    # Some plans use a generic "CURSO ELECTIVO" row inside the cycle table
+                    # and list real elective options in a nearby "CURSOS ELECTIVOS" section.
+                    if re.search(r"\bcursos?\b|\bmaterias?\b", query, flags=re.IGNORECASE):
+                        elective_heading_matches = await self.db_service.get_chunks_by_cycle_heading(
+                            "CURSOS ELECTIVOS",
+                            school,
+                        )
+                        keyword_matches.extend(elective_heading_matches)
                     logfire.info(
                         "Cycle keyword matches",
                         cycle_heading=cycle_heading,
@@ -252,7 +572,10 @@ Optimized query:"""
                 primary_keys = {(m.document_id, m.chunk_index) for m in all_primary}
 
                 chunk_refs = [(m.document_id, m.chunk_index) for m in all_primary]
-                adjacent_chunks = await self.db_service.get_adjacent_chunks(chunk_refs)
+                neighbor_radius = 4 if cycle_heading else 2
+                adjacent_chunks = await self.db_service.get_adjacent_chunks(
+                    chunk_refs, radius=neighbor_radius
+                )
 
                 new_adjacent = [
                     c for c in adjacent_chunks
@@ -292,6 +615,13 @@ Optimized query:"""
                 )
 
                 answer = await self.generate_answer(query, relevant_matches)
+                answer = self._replace_generic_elective_row_with_options(
+                    answer,
+                    relevant_matches,
+                    cycle_heading=cycle_heading,
+                )
+                answer = self._recompute_cycle_total_from_codes(answer)
+                answer = self._apply_single_elective_policy(answer)
 
                 # Check if answer generator couldn't find the information in chunks
                 if answer.strip() == "INSUFFICIENT_CONTEXT":

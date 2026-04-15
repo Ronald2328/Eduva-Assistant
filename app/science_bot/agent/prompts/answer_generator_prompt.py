@@ -116,7 +116,7 @@ Other chunks use a SPLIT CREDITS layout (section 6.2 plan de estudios) — CRITI
 ```
 
 HOW TO READ THE SPLIT CREDITS LAYOUT — CRITICAL:
-**Use the course code (D2 digit) as the PRIMARY source for credits — it is always correct.**
+**Use the course code (D2 digit) as the ONLY authoritative source for course credits.**
 
 The course code format is `[PREFIX][D1][D2][D3][D4]`. D2 = total créditos.
 - `ED 1331` → digits=1331 → D2=**3** → *3 créditos* (NOT 2)
@@ -127,7 +127,7 @@ The course code format is `[PREFIX][D1][D2][D3][D4]`. D2 = total créditos.
 - `QU 1315` → digits=1315 → D2=**3** → *3 créditos* (NOT 2)
 - `CS 1235` → digits=1235 → D2=**2** → *2 créditos* (NOT 1)
 
-**The first number in a data row (T=teoría credits) is NOT the total credits. Always extract D2 from the code.**
+**The first number in a data row (T=teoría) is NOT total credits. Always extract D2 from the code.**
 
 TOTALES row (`(blank) | TOTALES | (blank) | T_sum | P_sum | TC_sum | ...`): TC_sum is the 3rd number.
 → `11 | 7 | 18 | ...` → Total del ciclo: *18 créditos* (TC_sum=18, not T_sum=11)
@@ -137,6 +137,7 @@ HOW TO READ HTML TABLES:
 - The heading before the table (`# IV CICLO`, `#### III CICLO`) tells you the cycle number
 - Rows with only 2 cells and no number are usually "CURSOS ELECTIVOS" headers — skip them as data rows
 - A row with a course code (letters+numbers like MA3326, FI2101) identifies a course entry
+- If a course name contains `(E)`, `( E )` or `(ELECTIVO)`, classify that row as *electivo* (NOT obligatorio).
 
 ABOUT CHUNK LABELS IN THE CONTEXT:
 Each chunk is labeled as `score=X.XXXX` (primary vector match), `keyword-match` (retrieved by cycle heading keyword), or `context` (adjacent neighbor fetched to complete split tables).
@@ -171,7 +172,9 @@ When answering "¿Qué cursos hay en el N ciclo?":
 - D1 for cycle IX or X must be 5
 If a course code's D1 does NOT match the queried cycle's year, note the discrepancy but trust the explicit table heading — the table is authoritative, the code is a cross-check.
 
-RULE: When the table already has explicit HOURS and CREDITS columns, use those values. Use the code formula ONLY as a cross-check or when columns are missing.
+GLOBAL CREDITS RULE (APPLIES TO ALL TABLE FORMATS):
+- For every course row, derive `créditos` from D2 in the code, even if table columns show another value.
+- If table credit cells conflict with D2, treat table cells as OCR/noise and keep D2.
 
 HOW TO ANSWER ACADEMIC QUERIES:
 
@@ -182,7 +185,7 @@ HOW TO ANSWER ACADEMIC QUERIES:
    - If it has a code: add "Código académico: [CODE]" and "Créditos: [N]"
 
 2. **"¿Cuántos créditos tiene [curso X]?"**
-   - Find the course row and extract the last numeric cell (credits column)
+   - Find the course row, extract the code, and compute credits from D2
    - Answer: "*[Nombre Oficial]* tiene *[N] créditos*."
 
 3. **"¿Cuál es el código académico de [curso X]?"**
@@ -203,14 +206,19 @@ HOW TO ANSWER ACADEMIC QUERIES:
    - If a course code (e.g., EC 1201) appears in a sumillas chunk with a different name → IGNORE that name. Use only the name from the plan de estudios table row.
 
    COMPLETENESS CHECK:
-   - After listing courses, cross-check: sum the credits you listed. If it doesn't match the TOTAL row, you likely missed rows or included rows from another cycle. Re-read the chunk carefully.
-   - If the chunk seems incomplete (no TOTAL row visible), check the adjacent `context` chunk for the remaining rows before concluding.
+   - After listing courses, recompute total as SUM(D2 of each listed course code).
+   - If the chunk seems incomplete (no cierre de ciclo visible), check adjacent `context` chunks before concluding.
 
    - If table includes an `ELECTIVOS` block, DO NOT mix electives as mandatory courses.
+   - Even if there is NO separate `Electivos` block, any course marked with `(E)` or `(ELECTIVO)` must go to the `Electivos` subsection.
+   - If the cycle table has a generic row like `CURSO ELECTIVO` (without specific code/name), DO NOT output that generic row as a course.
+   - In that case, look for nearby section `CURSOS ELECTIVOS` and list those real elective options instead.
    - List mandatory courses first.
-   - Then add an `Electivos` subsection with available options and, if possible, indicate how many electives must be chosen.
-   - Use the `TOTAL` row in the table as authoritative for total credits of the cycle.
-   - NEVER report a total different from the table `TOTAL`.
+   - Then add an `Electivos` subsection with available options.
+   - ALWAYS state explicitly: `En electivos, solo se puede elegir 1 curso`.
+   - `Total del ciclo` MUST be: (sum of mandatory courses) + (credits of exactly 1 elective option).
+   - For UNP curricular tables with electivos in this context, assume 1 elective is chosen unless the table explicitly says another quantity.
+   - If a table `TOTAL` row conflicts, keep the D2-based sum and optionally annotate: `(el TOTAL de tabla parece inconsistente)`.
    - Format (WhatsApp friendly):
      ```
      *[N] Ciclo*
@@ -231,6 +239,7 @@ HOW TO ANSWER ACADEMIC QUERIES:
    1. Take the 4-digit number from the code (e.g., code "ED 1331" → digits "1331")
    2. D2 = 2nd digit of those 4 digits (e.g., "1331" → D2 = 3)
    3. Your reported credits MUST equal D2. If not, correct it.
+   4. Final cycle total MUST equal the arithmetic sum of those corrected D2 values.
 
    VERIFICATION TABLE for I CICLO Biology (as mandatory reference):
    - ED 1331 → D2=**3** → must say "3 créditos" (NOT 2)

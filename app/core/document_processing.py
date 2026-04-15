@@ -66,6 +66,12 @@ class ChunkingService:
         r"<(?:th|td)[^>]*>\s*([IVX]{1,4})\s+CICLO\s*</(?:th|td)>",
         re.IGNORECASE,
     )
+    COURSE_CODE_IN_CELL_RE = re.compile(
+        r"<(?:th|td)[^>]*>\s*[A-Z]{1,3}\s*\d{3,4}\s*</(?:th|td)>",
+        re.IGNORECASE,
+    )
+    PAGE_NUMBER_ONLY_RE = re.compile(r"^\d{1,4}$")
+    CYCLE_MARKER_START_THRESHOLD = 300
 
     def __init__(
         self,
@@ -107,6 +113,61 @@ class ChunkingService:
             return None
         return f"{match.group(1).upper()} CICLO"
 
+    def _is_table_continuation(
+        self,
+        table_html: str,
+        inherited_cycle_heading: str | None,
+        text_between_tables: str,
+    ) -> bool:
+        """Heuristic to detect a page-split continuation of the previous cycle table."""
+        if not inherited_cycle_heading:
+            return False
+
+        between = text_between_tables.strip(self.PAGE_SEPARATOR).strip()
+        if between and not self.PAGE_NUMBER_ONLY_RE.fullmatch(between):
+            return False
+
+        return bool(self.COURSE_CODE_IN_CELL_RE.search(table_html))
+
+    def _split_multi_cycle_table(
+        self,
+        table_html: str,
+        inherited_cycle_heading: str | None,
+    ) -> list[tuple[str, str | None]]:
+        """Split malformed OCR tables that mix cycle boundaries in one <table> block."""
+        markers = list(self.CYCLE_IN_TABLE_RE.finditer(table_html))
+        if not markers:
+            return [(table_html, None)]
+
+        first_marker = markers[0]
+        prefix = table_html[:first_marker.start()]
+        has_course_prefix = bool(self.COURSE_CODE_IN_CELL_RE.search(prefix))
+
+        # Typical OCR failure: continuation rows (with course codes) then a new
+        # cycle marker appears later in the same table block.
+        if not (
+            inherited_cycle_heading
+            and has_course_prefix
+            and first_marker.start() > self.CYCLE_MARKER_START_THRESHOLD
+        ):
+            return [(table_html, None)]
+
+        parts: list[tuple[str, str | None]] = []
+        prefix_content = prefix.strip(self.PAGE_SEPARATOR).strip()
+        if prefix_content:
+            parts.append((prefix_content, inherited_cycle_heading))
+
+        for i, marker in enumerate(markers):
+            start = marker.start()
+            end = markers[i + 1].start() if i + 1 < len(markers) else len(table_html)
+            section = table_html[start:end].strip(self.PAGE_SEPARATOR).strip()
+            if not section:
+                continue
+            cycle = f"{marker.group(1).upper()} CICLO"
+            parts.append((section, cycle))
+
+        return parts if parts else [(table_html, None)]
+
     def _split_table_aware(self, doc: LCDocument) -> list[LCDocument]:
         """Split one markdown document into text/table units without crossing tables.
 
@@ -120,9 +181,11 @@ class ChunkingService:
 
         split_docs: list[LCDocument] = []
         last_end = 0
+        last_cycle_heading: str | None = None
 
         for match in matches:
-            before = content[last_end:match.start()].strip(self.PAGE_SEPARATOR).strip()
+            raw_before = content[last_end:match.start()]
+            before = raw_before.strip(self.PAGE_SEPARATOR).strip()
             if before:
                 split_docs.append(
                     LCDocument(
@@ -132,20 +195,38 @@ class ChunkingService:
                 )
 
             table_html = match.group(0).strip(self.PAGE_SEPARATOR).strip()
-            cycle_heading = self._extract_cycle_heading(table_html)
-            table_text = (
-                f"### {cycle_heading}\n{table_html}" if cycle_heading else table_html
+            table_sections = self._split_multi_cycle_table(
+                table_html=table_html,
+                inherited_cycle_heading=last_cycle_heading,
             )
-            table_metadata = self._metadata_copy(getattr(doc, "metadata", {}))
-            if cycle_heading:
-                table_metadata["table_cycle_heading"] = cycle_heading
 
-            split_docs.append(
-                LCDocument(
-                    page_content=table_text,
-                    metadata=table_metadata,
+            for section_html, forced_cycle_heading in table_sections:
+                cycle_heading = forced_cycle_heading or self._extract_cycle_heading(
+                    section_html
                 )
-            )
+                if not cycle_heading and self._is_table_continuation(
+                    table_html=section_html,
+                    inherited_cycle_heading=last_cycle_heading,
+                    text_between_tables=raw_before,
+                ):
+                    cycle_heading = last_cycle_heading
+
+                table_text = (
+                    f"### {cycle_heading}\n{section_html}"
+                    if cycle_heading
+                    else section_html
+                )
+                table_metadata = self._metadata_copy(getattr(doc, "metadata", {}))
+                if cycle_heading:
+                    table_metadata["table_cycle_heading"] = cycle_heading
+                    last_cycle_heading = cycle_heading
+
+                split_docs.append(
+                    LCDocument(
+                        page_content=table_text,
+                        metadata=table_metadata,
+                    )
+                )
             last_end = match.end()
 
         after = content[last_end:].strip(self.PAGE_SEPARATOR).strip()

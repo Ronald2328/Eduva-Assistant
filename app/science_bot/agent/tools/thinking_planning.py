@@ -45,6 +45,13 @@ class ThinkingPlanningSchema(BaseModel):
     - Only search without school when the user has not mentioned any school at all.
     - After calling search_documents, if result has requires_school=true or reason_code=NEEDS_SCHOOL → ask: "¿De qué escuela eres?" (in user's language)
     - Remember: skip the general-first step whenever school is already known from context.
+
+    CREDITS CONSISTENCY CHECK (ACADEMIC CYCLE LISTS) — CRITICAL:
+    - If the answer includes a cycle course list with course codes (e.g., "CB 3347"), verify credits by code.
+    - Code format: [PREFIX][D1][D2][D3][D4] → D2 is total credits.
+    - Recompute cycle total as SUM(D2) across listed courses.
+    - If computed total != drafted total, correct the final total before responding.
+    - Example: CB 3347(3) + CB 3416(4) + CB 3450(4) + CB 3452(4) + CB 3455(4) + CB 3439(4) = 23.
     """
 
     question_analysis: str = Field(
@@ -54,7 +61,8 @@ class ThinkingPlanningSchema(BaseModel):
             "or ADMINISTRATIVE (trámite/costo/requisito/proceso)? "
             "Then: Is it clear? Is it ambiguous? What is the user really asking? "
             "ACADEMIC CONTENT → never ask about costs, search directly. "
-            "ADMINISTRATIVE → check for ambiguity before searching."
+            "ADMINISTRATIVE → check for ambiguity before searching. "
+            "If output is a cycle course list, include a credits consistency check using D2 from each course code."
         )
     )
 
@@ -102,6 +110,7 @@ async def thinking_planning_tool(
     - User asks about "costos" → Cost of which process?
     - User mentions their school → Remember it for future queries
     - search_documents result returns requires_school=true → Ask: "¿De qué escuela eres?"
+    - User asks courses in a cycle → Verify that reported total matches SUM(D2 from listed codes)
 
     WORKFLOW AFTER search_documents FAILURE:
     1. Read the tool result message carefully
